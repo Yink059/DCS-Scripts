@@ -409,24 +409,70 @@ function csar.returnUnits(unit)
 	
 end
 
-function csar.bail(args, time)
-	trigger.misc.getUserFlag("bail")
+function csar.bailOut(object)
+	if csar.heliPassengers[object:getName()] ~= nil then
+		if csar.heliPassengers[object:getName()]["n"] > 0 then
+			for k, v in next, csar.heliPassengers[object:getName()] do
+				if type(v) ~= "number" then
+					v:reset(object:getPoint())
+					csar.createCsarUnit(object:getCoalition(), object:getPoint(), nil)
+				end
+			end
+		end			
+	end
+					
+	local create = true
+	for k, v in next, csar.instances do
+		if v.object == object then
+			create = false
+		end
+	end
+						
+	if unitExemption[object:getTypeName()] then
+		create = false
+	end
+					
+	if create then
+		csar.createInstance(object)
+		csar.createCsarUnit(object:getCoalition(), object:getPoint(), object)
+	end
 	
-	if bail then
+	for k, v in next, net.get_player_list() do
+		if net.get_player_info(v , 'name') == object:getPlayerName() then
+			net.force_player_slot(v,0,'')
+			break--timer.scheduleFunction(function(v2) net.force_player_slot(v2,0,'') end , v , timer.getTime() + 2) 
+		end
+	end
+	
+	return
+end
+
+
+
+function csar.bail(args, time)
+	local bail = trigger.misc.getUserFlag("bail")
+
+	if tostring(bail) == '1' then
 		for k, v in next, coalition.getPlayers(1) do
-			if trigger.misc.getUserFlag(v:getPlayerName().."_bail") == true then
-				trigger.action.outText("bailing "..v:getPlayerName(),5)--test
-				trigger.action.setUserFlag(v:getPlayerName() .."_bail", false)
+			if tostring(trigger.misc.getUserFlag(v:getPlayerName().."_bail")) == '1' then
+				trigger.action.outTextForGroup(v:getGroup():getID(),"bailing out "..v:getPlayerName(),5)--test
+				trigger.action.setUserFlag(v:getPlayerName() .."_bail", 0)
+				csar.bailOut(v)
 			end
 		end
 		for k, v in next, coalition.getPlayers(2) do
-			if trigger.misc.getUserFlag(v:getPlayerName().."_bail") == true then
-				trigger.action.outText("bailing "..v:getPlayerName(),5)--test
-				trigger.action.setUserFlag(v:getPlayerName() .."_bail", false)
+			if tostring(trigger.misc.getUserFlag(v:getPlayerName().."_bail")) == '1' then
+				trigger.action.outTextForGroup(v:getGroup():getID(),"bailing out "..v:getPlayerName(),5)--test
+				trigger.action.setUserFlag(v:getPlayerName() .."_bail", 0)
+				csar.bailOut(v)
 			end
 		end
 	end
+	trigger.action.setUserFlag("bail",0)
+	return time + 1
 end
+
+timer.scheduleFunction(csar.bail, nil , timer.getTime()+1)
 ---------------------------------------------------------- event handlers
 
 YinkEventHandler = {} --event handlers

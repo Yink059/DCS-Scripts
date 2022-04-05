@@ -28,9 +28,7 @@ function yinkSlotBlocker.allowChangeSlot(pid, sid )
 	local t = DCS.getUnitProperty(unitID, DCS.UNIT_TYPE)
 	local c = DCS.getUnitProperty(unitID, DCS.UNIT_COALITION)
 	local gT = DCS.getUnitProperty(unitID, DCS.UNIT_GROUPCATEGORY)
-	local playerLives,lifeLimit
-	
-	
+	local playerLives,lifeLimit	
 	
 	local playerLivesAirplane,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('"..pid.."'..'_lives_airplane'); ")
 	local playerLivesHelicopter,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('"..pid.."'..'_lives_helicopter'); ")
@@ -71,6 +69,21 @@ function yinkSlotBlocker.onGameEvent(eventName, ...)
 	if not allow then
 		net.force_player_slot(arg[1],0,'')
 	end
+end
+
+function yinkSlotBlocker.onPlayerTrySendChat(pid, msg, all)
+
+	if net.get_player_info(pid, 'side') == 0 and pid == 1 then
+		return ""
+	end
+	
+	if msg == "-bail" then
+		local playerName = net.get_player_info(pid , 'name')
+		local _status,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('bail', 1); ")
+		local _status,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..playerName.."_bail".."', 1); ")
+		return "bailing out!"
+	end
+	
 end
 
 DCS.setUserCallbacks(yinkSlotBlocker)
