@@ -489,6 +489,8 @@ main function for spawning csar units
 
 		if world.event.S_EVENT_BIRTH == event.id then
 			if event.initiator:getPlayerName() ~= nil then 
+				csar.heliPassengers[event.initiator:getName()] = {}
+				csar.heliPassengers[event.initiator:getName()]["n"] = 0 --list of rescued pilots on aircraft
 				trigger.action.setUserFlag(event.initiator:getPlayerName() .."_bail", false)
 				lives.activeUnits[event.initiator:getName()] = false
 			end
@@ -502,8 +504,7 @@ main function for spawning csar units
 					--missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Check Passengers" , subMenu , infantry.passengers , event.initiator:getName())
 					csar.hasCommands[event.initiator:getGroup():getID()] = true
 				end
-				csar.heliPassengers[event.initiator:getName()] = {}
-				csar.heliPassengers[event.initiator:getName()]["n"] = 0 --list of rescued pilots on aircraft
+				
 				if event.initiator:getCoalition() == 1 then
 					timer.scheduleFunction(csar.loop, {event.initiator, csar.activeUnits.red, event.initiator:getID()}, timer.getTime() + 1)
 				else
