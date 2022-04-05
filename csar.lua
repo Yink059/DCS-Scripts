@@ -484,7 +484,7 @@ timer.scheduleFunction(csar.bail, nil , timer.getTime()+1)
 
 function csar.list(objectName)
 	
-	local object = Object.getByName(objectName)
+	local object = Unit.getByName(objectName)
 	local outputString = "CSAR List:"
 	local coa = object:getCoalition()
 	local bulls = coalition.getMainRefPoint(coa)
