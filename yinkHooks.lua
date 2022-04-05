@@ -1,8 +1,5 @@
 local yinkSlotBlocker = {}
-
-
-
-
+local StB = { ["true"]=true, ["false"]=false , ["0"] = false, ["1"] = true}
 
 local function split(pString, pPattern) --string.split
 	local Table = {}
@@ -30,9 +27,30 @@ function yinkSlotBlocker.allowChangeSlot(pid, sid )
 	local n = DCS.getUnitProperty(unitID, DCS.UNIT_NAME)
 	local t = DCS.getUnitProperty(unitID, DCS.UNIT_TYPE)
 	local c = DCS.getUnitProperty(unitID, DCS.UNIT_COALITION)
-
-	local playerLives,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('"..pid.."'); ")
-	local lifeLimit,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('lifeLimit'); ")
+	local gT = DCS.getUnitProperty(unitID, DCS.UNIT_GROUPCATEGORY)
+	local playerLives,lifeLimit
+	
+	
+	
+	local playerLivesAirplane,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('"..pid.."'..'_lives_airplane'); ")
+	local playerLivesHelicopter,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('"..pid.."'..'_lives_helicopter'); ")
+	local lifeLimitAirplane,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('lifeLimit_airplane'); ")
+	local lifeLimitHelicopter,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('lifeLimit_helicopter'); ")
+	
+	local unitExemption,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('"..t.."'); ")
+	if StB[unitExemption] then
+		return true
+	end
+	
+	if gT == "plane" then
+		playerLives = playerLivesAirplane
+		lifeLimit = lifeLimitAirplane
+		net.send_chat_to("Fixed Wing Lives left: "..tostring(lifeLimit - playerLives), pid)
+	elseif gT == "helicopter" then
+		playerLives = playerLivesHelicopter
+		lifeLimit = lifeLimitHelicopter
+		net.send_chat_to("Helicopter Lives left: "..tostring(lifeLimit - playerLives), pid)
+	end
 	
 	if tonumber(playerLives) >= tonumber(lifeLimit) then
 		return false

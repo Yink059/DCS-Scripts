@@ -12,8 +12,27 @@ csarMaxPassengers["SA342Minigun"]	= 3
 csarMaxPassengers["SA342L"]			= 3
 csarMaxPassengers["SA342M"]			= 3
 
-csar.searchDistance = 200
 
+local unitExemption = {}
+
+unitExemption["Mi-8MT"]	 = true
+unitExemption["Mi-8MTV2"] = true
+unitExemption["UH-1H"] = true
+
+for k, v in next, unitExemption do
+	trigger.action.setUserFlag(k,v)
+end
+
+csar.searchDistance = 500
+
+csar.blueEnabled = true
+csar.redEnabled = true
+
+csar.activeUnits 	= {}
+csar.isLanded 	= {}
+
+trigger.action.setUserFlag("lifeLimit_helicopter",2)
+trigger.action.setUserFlag("lifeLimit_airplane",1)
 --------------------------------------------------------------- util defines
 
 function util.split(pString, pPattern) --string.split
@@ -98,33 +117,34 @@ end
 
 --------------------------------------------------------------- yink definitions
 
+--------------------------------------------------------------- csar instance definitions
 
---------------------------------------------------------------- csar definitions
-
-csar.instances = {}
-csar.activeUnits = {}
-csar.activeUnits.red = {}
-csar.activeUnits.blue = {}
 csarInstance = {}
-csar.heliPassengers = {}
-csar.hasCommands = {}
-csar.redEnabled = true
-csar.blueEnabled = true
-csar.alreadySmoked = {}
-csar.alreadyFlared = {}
+csar.instances = {}
 
-function csarInstance:new (o)
-	o = o or {}   
-	setmetatable(o, self)
+function csarInstance:new (t)
+	t = t or {}   
+	setmetatable(t, self)
 	self.__index = self
-	return o
+	return t
 end
 
 function csarInstance:setEjectionParams(object)
+	self.object = object
 	self.point = object:getPoint()
 	self.coa = object:getCoalition()
 	self.type = object:getTypeName()
 	self.playerName = object:getPlayerName()
+	self.category = object:getGroup():getCategory()
+	self.time = timer.getTime()
+	
+	for k, v in next, net.get_player_list() do
+		if net.get_player_info(v , 'name') == self.playerName then
+			self.playerID = v
+			break
+		end
+	end
+	
 	self.state = "ejected"
 end
 
@@ -133,15 +153,8 @@ function csar.createInstance(object)
 	local instance = csarInstance:new()
 	csarInstance:setEjectionParams(object)
 	table.insert(csar.instances, instance)
-	return
-end
-
-function csarInstance:setUnitName(unitName)
-	self.unitName = unitName
-end
-
-function csarInstance:clearPoint()
-	self.point = [x = 0,y = 0,z = 0]
+	
+	return instance
 end
 
 function csar.getInstance(unitName)
@@ -152,6 +165,31 @@ function csar.getInstance(unitName)
 	end
 	return nil
 end
+
+function csarInstance:setUnitName(unitName)
+	self.unitName = unitName
+end
+
+function csarInstance:clearPoint()
+	self.point = {x = 0,y = 0,z = 0}
+end
+
+function csarInstance:reset(point)
+	self.point = point
+	self.state = "ejected"
+end
+
+--------------------------------------------------------------- csar definitions
+
+csar.activeUnits = {}
+csar.activeUnits.red = {}
+csar.activeUnits.blue = {}
+csar.heliPassengers = {}
+csar.hasCommands = {}
+csar.redEnabled = true
+csar.blueEnabled = true
+csar.alreadySmoked = {}
+csar.alreadyFlared = {}
 
 function csar.findClosestCSAR(args)
 	
@@ -207,7 +245,6 @@ function csar.loop(args, time) --timer.scheduleFunction(csar.loop, {event.initia
 	local unit 			= args[1]
 	local csarList 		= args[2]
 	local id 			= args[3]
-	
 
 	if not unit:isExist() then
 		--trigger.action.outText(tostring(id).." removed from heli csar loop by not existing",5)
@@ -231,12 +268,11 @@ function csar.loop(args, time) --timer.scheduleFunction(csar.loop, {event.initia
 	if util.checkSpeed(unit) < 2 then
 		
 		if closestCSAR.distance < 100 then
-			local passengerCount =csar.heliPassengers[unit:getName()]["n"] + (infantry.heliSquads[unit:getName()] * 4)
+			local passengerCount =csar.heliPassengers[unit:getName()]["n"]
 			if passengerCount < csarMaxPassengers[unit:getTypeName()] then
-				csar.getInstance(closestCSAR.objectName):clearPoint()
 				csar.heliPassengers[unit:getName()][closestCSAR.objectName] = csar.getInstance(closestCSAR.objectName)
 				csar.heliPassengers[unit:getName()]["n"] = csar.heliPassengers[unit:getName()]["n"] + 1
-				trigger.action.outTextForGroup(unit:getGroup():getID(),"Pilot extracted! Seats remaining: "..tostring(csarMaxPassengers[unit:getTypeName()] - csar.heliPassengers[unit:getName()]["n"]),10)
+				trigger.action.outTextForGroup(unit:getGroup():getID(),  csar.heliPassengers[unit:getName()][closestCSAR.objectName].type .. " pilot ".. csar.heliPassengers[unit:getName()][closestCSAR.objectName].playerName .." extracted! Seats remaining: "..tostring(csarMaxPassengers[unit:getTypeName()] - csar.heliPassengers[unit:getName()]["n"]),10)
 				
 				if Unit.getByName(closestCSAR.objectName):getCoalition() == 1 then
 					for k,v in next, csar.activeUnits.red do
@@ -266,20 +302,126 @@ function csar.loop(args, time) --timer.scheduleFunction(csar.loop, {event.initia
 			local csarUnit = Unit.getByName(closestCSAR.objectName)
 			csar.alreadySmoked[closestCSAR.objectName] = true
 			trigger.action.smoke(csarUnit:getPoint(), smokeColor[csarUnit:getCoalition()])
-			timer.scheduleFunction(function() csar.alreadySmoked[closestCSAR.objectName] = nil end, nil, timer.getTime() + 300)
+			timer.scheduleFunction(function() csar.alreadySmoked[closestCSAR.objectName] = nil end, nil, timer.getTime() + 300) --reset smoke timer
 		end
 	end
 	
-	if not csar.alreadyFlared[closestCSAR.objectName] then --if the unit can throw its initial smoke still
-		if closestCSAR.distance < 4000 then
+	if not csar.alreadyFlared[closestCSAR.objectName] then --if the unit can throw its initial flare still
+		if closestCSAR.distance < 4000 and closestCSAR.distance > 500 then
 			local csarUnit = Unit.getByName(closestCSAR.objectName)
-			csar.alreadyFlared[closestCSAR.objectName] = true
+			csar.alreadyFlared[closestCSAR.objectName] = false
 			trigger.action.signalFlare(csarUnit:getPoint() , 2 , math.random(1,360) )
 		end
 	end
 	return time+10
 end
 
+function csar.createCsarUnit(coa,point,obj)			
+	local staticObj = {}
+	local side 		= coa
+	local object	= csar.findActiveSpawn(point,side)
+		
+	if object == nil then
+		if args[3] ~= nil then obj:destroy() end
+		return
+	end
+	
+	local group 	= {}
+	local unit 		= {}
+	local freq 		= {}
+	unit["name"] 		= "CSAR_" .. tostring(side) .. "_" .. tostring(timer.getTime()) .."_".. tostring(math.random(99999)) -- name
+	object:setUnitName(unit["name"])
+	
+	local setImmortal = { 
+		id = 'SetImmortal', 
+		params = { 
+			value = true
+		} 
+	}
+	
+	if side == 1 and csar.redEnabled then
+		group["country"] 	= country.id.RUSSIA
+		table.insert(csar.activeUnits.red,unit["name"])
+		unit["type"] 		= "Paratrooper AKS-74"
+		trigger.action.radioTransmission("l10n/DEFAULT/beacon_silent.ogg", point , 0 , true , 121500000, 4 , unit["name"])
+	elseif side == 2 and csar.blueEnabled then
+		group["country"] 	= country.id.USA
+		table.insert(csar.activeUnits.blue,unit["name"])
+		unit["type"] 		= "Soldier M4"
+		trigger.action.radioTransmission("l10n/DEFAULT/beacon_silent.ogg", point , 1 , true , 31050000, 4 , unit["name"])
+	end
+			
+	group["category"] 	= 2
+	group["name"] 		= unit["name"] .. "_G"
+	group["task"] 		= "Ground Nothing"
+	group["units"]		= {}
+	unit["x"]			= point.x + math.random(-10,10) -- x
+	unit["y"]			= point.z + math.random(-10,10) -- y
+	unit["heading"] 	= math.random(360)
+	table.insert(group["units"],unit)
+	
+	
+	--trigger.action.outText(object.type,5)
+	
+	--trigger.action.outText(object.unitName,5)
+	
+	--trigger.action.outText(object.time,5)
+	
+	if side ~= 0 then
+		coalition.addGroup(group["country"],group["category"],group)
+		Group.getByName(group["name"]):getController():setOption(0,4)
+		Group.getByName(group["name"]):getController():setCommand(setImmortal)
+	end
+end
+
+function csar.returnUnits(unit)
+	local coa = unit:getCoalition()
+	local bases = coalition.getAirbases(coa)
+	local closestBase = bases[1]
+	local distance
+	local closestDistance = util.distance(unit:getPoint(), closestBase:getPoint())
+	
+	for k, v in next, bases do
+		distance = util.distance(unit:getPoint(), v:getPoint())
+		if distance < closestDistance then
+			closestDistance = distance
+			closestBase = v
+		end
+	end
+	
+	local outputString = "Passengers Returned to ".. closestBase:getName() ..":"
+	
+	if closestDistance < 500 and csar.heliPassengers[unit:getName()]["n"] > 0 then
+		for k, v in next, csar.heliPassengers[unit:getName()] do
+			if v.playerName ~= nil then
+				outputString = outputString  .. "\n" .. v.playerName .. " | " .. v.type
+			end
+		end
+		csar.heliPassengers[unit:getName()]["n"] = 0
+		trigger.action.outTextForGroup(unit:getGroup():getID(),outputString,15)
+	end
+	
+	
+end
+
+function csar.bail(args, time)
+	trigger.misc.getUserFlag("bail")
+	
+	if bail then
+		for k, v in next, coalition.getPlayers(1) do
+			if trigger.misc.getUserFlag(v:getPlayerName().."_bail") == true then
+				trigger.action.outText("bailing "..v:getPlayerName(),5)--test
+				trigger.action.setUserFlag(v:getPlayerName() .."_bail", false)
+			end
+		end
+		for k, v in next, coalition.getPlayers(2) do
+			if trigger.misc.getUserFlag(v:getPlayerName().."_bail") == true then
+				trigger.action.outText("bailing "..v:getPlayerName(),5)--test
+				trigger.action.setUserFlag(v:getPlayerName() .."_bail", false)
+			end
+		end
+	end
+end
 ---------------------------------------------------------- event handlers
 
 YinkEventHandler = {} --event handlers
@@ -295,6 +437,10 @@ main function for spawning csar units
 
 
 		if world.event.S_EVENT_BIRTH == event.id then
+			if event.initiator:getPlayerName() ~= nil then 
+				trigger.action.setUserFlag(event.initiator:getPlayerName() .."_bail", false)
+				csar.activeUnits[event.initiator:getName()] = false
+			end
 			if event.initiator:getGroup():getCategory() == 1 then --if player is helicopter						
 				if csar.hasCommands[event.initiator:getGroup():getID()] == nil then
 					local subMenu = missionCommands.addSubMenuForGroup(event.initiator:getGroup():getID() , "Infantry and CSAR Commands" )
@@ -308,84 +454,168 @@ main function for spawning csar units
 				csar.heliPassengers[event.initiator:getName()] = {}
 				csar.heliPassengers[event.initiator:getName()]["n"] = 0 --list of rescued pilots on aircraft
 				if event.initiator:getCoalition() == 1 then
-				return
 					timer.scheduleFunction(csar.loop, {event.initiator, csar.activeUnits.red, event.initiator:getID()}, timer.getTime() + 1)
 				else
-				return
 					timer.scheduleFunction(csar.loop, {event.initiator, csar.activeUnits.blue, event.initiator:getID()}, timer.getTime() + 1)
 				end
 			end
 		end
 
-		if world.event.S_EVENT_LANDING_AFTER_EJECTION == event.id then		
-			
-			local o			= event.initiator			
-			local staticObj = {}
-			local side 		= o:getCoalition()
-			local object	= csar.findActiveSpawn(event.initiator:getPoint(),side)
-			
-			if object == nil then
-				o:destroy()
-				return
-			end
-			
-			local group 	= {}
-			local unit 		= {}
-			local freq 		= {}
-			unit["name"] 		= "CSAR_" .. tostring(side) .. "_" .. tostring(timer.getTime()) -- name
-			object:setUnitName(unit["name"])
-			
-			if side == 1 and csar.redEnabled then
-				group["country"] 	= country.id.RUSSIA
-				table.insert(csar.activeUnits.red,unit["name"])
-				unit["type"] 		= "Paratrooper AKS-74"
-				trigger.action.radioTransmission("l10n/DEFAULT/beacon_silent.ogg", o:getPoint() , 0 , true , 121500000, 4 , unit["name"])
-			elseif side == 2 and csar.blueEnabled then
-				group["country"] 	= country.id.USA
-				table.insert(csar.activeUnits.blue,unit["name"])
-				unit["type"] 		= "Soldier M4"
-				trigger.action.radioTransmission("l10n/DEFAULT/beacon_silent.ogg", o:getPoint() , 1 , true , 31050000, 4 , unit["name"])
-			end
-			
-			group["category"] 	= 2
-			group["name"] 		= unit["name"] .. "_G"
-			group["task"] 		= "Ground Nothing"
-			group["units"]		= {}
-			unit["x"]			= o:getPoint().x -- x
-			unit["y"]			= o:getPoint().z -- y
-			unit["heading"] 	= math.deg(math.atan2(o:getPosition().x.z, o:getPosition().x.x)+2*math.pi) -- heading
-			table.insert(group["units"],unit)
-			
-			o:destroy()
-			
-			if side ~= 0 then
-				coalition.addGroup(group["country"],group["category"],group)
-				Group.getByName(group["name"]):getController():setOption(0,4)
-			end
+		if world.event.S_EVENT_LANDING_AFTER_EJECTION == event.id then
+			event.initiator:destroy()
+			return
 		end
 		
 		if event.initiator ~= nil then
 			if event.initiator:getCategory() == 1 then
-				if event.initiator:getPlayerName() ~= nil then
-			
+				if event.initiator:getPlayerName() ~= nil then	
+					----------------------------------------------
 					if world.event.S_EVENT_EJECTION == event.id then
 						csar.createInstance(event.initiator)
+						csar.createCsarUnit(event.initiator:getCoalition(), event.initiator:getPoint(), event.initiator)--(coa,point,obj)		
 						return
 					end
-	
-					if world.event.S_EVENT_BIRTH == event.id then
-						--reset vars
+					----------------------------------------------
+					if world.event.S_EVENT_CRASH == event.id then
+					
+						if csar.heliPassengers[event.initiator:getName()] ~= nil then
+							if csar.heliPassengers[event.initiator:getName()]["n"] > 0 then
+								for k, v in next, csar.heliPassengers[event.initiator:getName()] do
+									if type(v) ~= "number" then
+										v:reset(event.initiator:getPoint())
+										csar.createCsarUnit(event.initiator:getCoalition(), event.initiator:getPoint(), nil)
+									end
+								end
+							end			
+						end
+					
+						local create = true
+						for k, v in next, csar.instances do
+							if v.object == event.initiator then
+								create = false
+							end
+						end
+						--add no spawn for csar chopper
+						if create then
+							csar.createInstance(event.initiator)
+							csar.createCsarUnit(event.initiator:getCoalition(), event.initiator:getPoint(), event.initiator)
+						end
+						
+						
 						return
 					end
-	
+					----------------------------------------------
 					if world.event.S_EVENT_TAKEOFF == event.id then
+						if csar.activeUnits[event.initiator:getName()] == false then
+							csar.activeUnits[event.initiator:getName()] = true
+							
+							local coa = event.initiator:getCoalition()
+							local bases = coalition.getAirbases(coa)
+							local closestBase = bases[1]
+							local distance
+							local closestDistance = util.distance(event.initiator:getPoint(), closestBase:getPoint())
+							local pid
+				
+							for k, v in next, bases do
+								distance = util.distance(event.initiator:getPoint(), v:getPoint())
+								if distance <= closestDistance then
+									closestDistance = distance
+									closestBase = v
+								end
+							end							
+
+							trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"You have taken off from "..closestBase:getName(),5)
+							
+							if unitExemption[event.initiator:getTypeName()] then
+								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"CSAR Chopper: no life modification.",5)
+								return
+							end
+							
+							for k, v in next, net.get_player_list() do
+								if net.get_player_info(v , 'name') == event.initiator:getPlayerName() then
+									pid = v
+									break
+								end
+							end
+							
+							if event.initiator:getGroup():getCategory() == Group.Category.AIRPLANE then
+								trigger.action.setUserFlag(tostring(pid).."_lives_airplane",tonumber(trigger.misc.getUserFlag(pid.."_lives_airplane")) + 1)
+								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Airplane life used! Lives remaining: "..tostring( tonumber(trigger.misc.getUserFlag('lifeLimit_airplane')) - tonumber(trigger.misc.getUserFlag(pid.."_lives_airplane")) ),5)
+							elseif event.initiator:getGroup():getCategory() == Group.Category.HELICOPTER then
+								trigger.action.setUserFlag(tostring(pid).."_lives_helicopter",tonumber(trigger.misc.getUserFlag(pid.."_lives_helicopter")) + 1)
+								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Helicopter life used! Lives remaining: "..tostring( tonumber(trigger.misc.getUserFlag('lifeLimit_helicopter')) - tonumber(trigger.misc.getUserFlag(pid.."_lives_helicopter")) ),5)
+							end
+						end
 						return
 					end	
-	
+					----------------------------------------------
 					if world.event.S_EVENT_LAND == event.id then
+					
+						if csar.activeUnits[event.initiator:getName()] == true then
+							
+							local coa = event.initiator:getCoalition()
+							local bases = coalition.getAirbases(coa)
+							local closestBase = bases[1]
+							local distance
+							local closestDistance = util.distance(event.initiator:getPoint(), closestBase:getPoint())
+							local pid, playerID
+				
+							for k, v in next, bases do
+								distance = util.distance(event.initiator:getPoint(), v:getPoint())
+								if distance <= closestDistance then
+									closestDistance = distance
+									closestBase = v
+								end
+							end
+							
+							if closestDistance < 500 or (event.place ~= nil and event.place:getCoalition() == coa) then
+								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"You have landed at "..closestBase:getName(),5)
+								csar.activeUnits[event.initiator:getName()] = false
+							end
+							
+							if  csar.activeUnits[event.initiator:getName()] == false then
+								if csar.heliPassengers[event.initiator:getName()]["n"] > 0 then
+									for k, v in next, csar.heliPassengers[event.initiator:getName()] do
+										if type(v) ~= "number" then
+											if v.category == Group.Category.AIRPLANE then
+												trigger.action.setUserFlag(tostring(v.playerID).."_lives_airplane",tonumber(trigger.misc.getUserFlag(v.playerID.."_lives_airplane")) - 1)
+												trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Airplane life returned for: "..v.playerName,5)
+											elseif v.category == Group.Category.HELICOPTER then
+												trigger.action.setUserFlag(tostring(v.playerID).."_lives_helicopter",tonumber(trigger.misc.getUserFlag(v.playerID.."_lives_helicopter")) - 1)		
+												trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Helicopter life returned for: "..v.playerName,5)							
+											end
+										end
+									end
+									csar.heliPassengers[event.initiator:getName()] = {}
+									csar.heliPassengers[event.initiator:getName()]["n"] = 0
+								end
+							end
+							
+							if unitExemption[event.initiator:getTypeName()] then
+								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"CSAR Chopper: no life modification.",5)
+								return
+							end
+							
+							for k, v in next, net.get_player_list() do
+								if net.get_player_info(v , 'name') == event.initiator:getPlayerName() then
+									pid = v
+									break
+								end
+							end
+							
+							if event.initiator:getGroup():getCategory() == Group.Category.AIRPLANE then
+								trigger.action.setUserFlag(tostring(pid).."_lives_airplane",tonumber(trigger.misc.getUserFlag(pid.."_lives_airplane")) - 1)
+								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Airplane life returned! Lives remaining: "..tostring( tonumber(trigger.misc.getUserFlag('lifeLimit_airplane')) - tonumber(trigger.misc.getUserFlag(pid.."_lives_airplane")) ),5)
+							elseif event.initiator:getGroup():getCategory() == Group.Category.HELICOPTER then
+								trigger.action.setUserFlag(tostring(pid).."_lives_helicopter",tonumber(trigger.misc.getUserFlag(pid.."_lives_helicopter")) - 1)
+								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Helicopter life returned! Lives remaining: "..tostring( tonumber(trigger.misc.getUserFlag('lifeLimit_helicopter')) - tonumber(trigger.misc.getUserFlag(pid.."_lives_helicopter")) ),5)
+							end
+						end
+					
 						--return csar
 						return
-					end					
+					end
+					----------------------------------------------	
 				end
 			end
 		end
@@ -397,12 +627,3 @@ world.addEventHandler(YinkEventHandler)
 
 trigger.action.outText("csar.lua loaded",10)
 log.write("scripting", log.INFO, "csar.lua loaded")
-
-
-
-
-
-
-
-
-
