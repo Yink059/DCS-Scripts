@@ -115,6 +115,10 @@ function util.checkSpeed(unit)
 	return speed
 end
 
+function util.bearing(vec3A, vec3B)
+	local azimuth = math.atan2(vec3B.z - vec3A.z, vec3B.x - vec3A.x)
+	return azimuth<0 and math.deg(azimuth+2*math.pi) or math.deg(azimuth)
+end
 
 --------------------------------------------------------------- yink definitions
 
@@ -184,6 +188,9 @@ function csarInstance:reset(point)
 	self.state = "ejected"
 end
 
+function csarInstance:delete()
+	self = nil
+end
 --------------------------------------------------------------- csar definitions
 
 csar.activeUnits = {}
@@ -473,6 +480,30 @@ function csar.bail(args, time)
 end
 
 timer.scheduleFunction(csar.bail, nil , timer.getTime()+1)
+
+
+function csar.list(object)
+
+	local outputString = "CSAR List:"
+	local coa = object:getCoalition()
+	local bulls = coalition.getMainRefPoint(coa)
+	local csarList, bearing, distance
+	
+	if object:getCoalition() == 1 then
+		csarList = csar.activeUnits.red
+	elseif object:getCoalition() == 2 then
+		csarList = csar.activeUnits.blue
+	end
+	
+	for k, v in next, csar.instances do
+		if v.coa == coa then
+			bearing = util.round(util.bearing(bulls, v.point))
+			distance = util.round(util.distance(bulls,v.point)/1000)
+			outputString = outputString .. "\n".. v.type .." Pilot " .. v.playerName .. " at bullseye " .. tostring(bearing) .. " for ".. tostring(distance).. "."
+		end
+	end
+	trigger.action.outTextForGroup(object:getGroup():getID(), outputString, 15)
+end
 ---------------------------------------------------------- event handlers
 
 YinkEventHandler = {} --event handlers
@@ -497,7 +528,7 @@ main function for spawning csar units
 			if event.initiator:getGroup():getCategory() == 1 then --if player is helicopter						
 				if csar.hasCommands[event.initiator:getGroup():getID()] == nil then
 					local subMenu = missionCommands.addSubMenuForGroup(event.initiator:getGroup():getID() , "Infantry and CSAR Commands" )
-					missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Closest CSAR" , subMenu , csar.findClosestCSAR , {event.initiator:getPoint(),event.initiator:getCoalition()})
+					missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Closest CSARs" , subMenu , csar.list , event.initiator)
 					--missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Load Troops" , subMenu , infantry.load , event.initiator:getName())
 					--missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Unload Troops" , subMenu , infantry.unload , event.initiator:getName())
 					--missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Toggle Troop Drop" , subMenu , infantry.toggleDrop , event.initiator:getName())
@@ -637,9 +668,11 @@ main function for spawning csar units
 											if v.category == Group.Category.AIRPLANE then
 												trigger.action.setUserFlag(tostring(v.playerID).."_lives_airplane",tonumber(trigger.misc.getUserFlag(v.playerID.."_lives_airplane")) - 1)
 												trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Airplane life returned for: "..v.playerName,5)
+												v:delete()									
 											elseif v.category == Group.Category.HELICOPTER then
 												trigger.action.setUserFlag(tostring(v.playerID).."_lives_helicopter",tonumber(trigger.misc.getUserFlag(v.playerID.."_lives_helicopter")) - 1)		
-												trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Helicopter life returned for: "..v.playerName,5)							
+												trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Helicopter life returned for: "..v.playerName,5)	
+												v:delete()										
 											end
 										end
 									end
