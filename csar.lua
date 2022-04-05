@@ -12,7 +12,8 @@ csarMaxPassengers["SA342Minigun"]	= 3
 csarMaxPassengers["SA342L"]			= 3
 csarMaxPassengers["SA342M"]			= 3
 
-
+lives = {}
+lives.activeUnits = {}
 local unitExemption = {}
 
 unitExemption["Mi-8MT"]	 = true
@@ -149,6 +150,10 @@ function csarInstance:setEjectionParams(object)
 end
 
 function csar.createInstance(object)
+	
+	if lives.activeUnits[object:getName()] == false then
+		return nil
+	end
 	
 	local instance = csarInstance:new()
 	csarInstance:setEjectionParams(object)
@@ -322,7 +327,7 @@ function csar.createCsarUnit(coa,point,obj)
 	local object	= csar.findActiveSpawn(point,side)
 		
 	if object == nil then
-		if args[3] ~= nil then obj:destroy() end
+		if obj ~= nil then obj:destroy() end
 		return
 	end
 	
@@ -439,7 +444,7 @@ main function for spawning csar units
 		if world.event.S_EVENT_BIRTH == event.id then
 			if event.initiator:getPlayerName() ~= nil then 
 				trigger.action.setUserFlag(event.initiator:getPlayerName() .."_bail", false)
-				csar.activeUnits[event.initiator:getName()] = false
+				lives.activeUnits[event.initiator:getName()] = false
 			end
 			if event.initiator:getGroup():getCategory() == 1 then --if player is helicopter						
 				if csar.hasCommands[event.initiator:getGroup():getID()] == nil then
@@ -495,6 +500,11 @@ main function for spawning csar units
 								create = false
 							end
 						end
+						
+						if unitExemption[event.initiator:getTypeName()] then
+							create = false
+						end
+						
 						--add no spawn for csar chopper
 						if create then
 							csar.createInstance(event.initiator)
@@ -506,8 +516,8 @@ main function for spawning csar units
 					end
 					----------------------------------------------
 					if world.event.S_EVENT_TAKEOFF == event.id then
-						if csar.activeUnits[event.initiator:getName()] == false then
-							csar.activeUnits[event.initiator:getName()] = true
+						if lives.activeUnits[event.initiator:getName()] == false then
+							lives.activeUnits[event.initiator:getName()] = true
 							
 							local coa = event.initiator:getCoalition()
 							local bases = coalition.getAirbases(coa)
@@ -551,7 +561,7 @@ main function for spawning csar units
 					----------------------------------------------
 					if world.event.S_EVENT_LAND == event.id then
 					
-						if csar.activeUnits[event.initiator:getName()] == true then
+						if lives.activeUnits[event.initiator:getName()] == true then
 							
 							local coa = event.initiator:getCoalition()
 							local bases = coalition.getAirbases(coa)
@@ -570,10 +580,10 @@ main function for spawning csar units
 							
 							if closestDistance < 500 or (event.place ~= nil and event.place:getCoalition() == coa) then
 								trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"You have landed at "..closestBase:getName(),5)
-								csar.activeUnits[event.initiator:getName()] = false
+								lives.activeUnits[event.initiator:getName()] = false
 							end
 							
-							if  csar.activeUnits[event.initiator:getName()] == false then
+							if  lives.activeUnits[event.initiator:getName()] == false then
 								if csar.heliPassengers[event.initiator:getName()]["n"] > 0 then
 									for k, v in next, csar.heliPassengers[event.initiator:getName()] do
 										if type(v) ~= "number" then
