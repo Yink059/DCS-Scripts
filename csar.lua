@@ -482,8 +482,9 @@ end
 timer.scheduleFunction(csar.bail, nil , timer.getTime()+1)
 
 
-function csar.list(object)
-
+function csar.list(objectName)
+	
+	local object = Object.getByName(objectName)
 	local outputString = "CSAR List:"
 	local coa = object:getCoalition()
 	local bulls = coalition.getMainRefPoint(coa)
@@ -528,7 +529,7 @@ main function for spawning csar units
 			if event.initiator:getGroup():getCategory() == 1 then --if player is helicopter						
 				if csar.hasCommands[event.initiator:getGroup():getID()] == nil then
 					local subMenu = missionCommands.addSubMenuForGroup(event.initiator:getGroup():getID() , "Infantry and CSAR Commands" )
-					missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Closest CSARs" , subMenu , csar.list , event.initiator)
+					missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Closest CSARs" , subMenu , csar.list , event.initiator:getName())
 					--missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Load Troops" , subMenu , infantry.load , event.initiator:getName())
 					--missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Unload Troops" , subMenu , infantry.unload , event.initiator:getName())
 					--missionCommands.addCommandForGroup(event.initiator:getGroup():getID() , "Toggle Troop Drop" , subMenu , infantry.toggleDrop , event.initiator:getName())
