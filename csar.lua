@@ -160,7 +160,7 @@ function csar.createInstance(object)
 	end
 	
 	local instance = csarInstance:new()
-	csarInstance:setEjectionParams(object)
+	instance:setEjectionParams(object)
 	table.insert(csar.instances, instance)
 	
 	return instance
@@ -189,6 +189,11 @@ function csarInstance:reset(point)
 end
 
 function csarInstance:delete()
+	for k, v in next, csar.instances do
+		if self == v then
+			table.remove(csar.instances, k)
+		end
+	end
 	self = nil
 end
 --------------------------------------------------------------- csar definitions
@@ -510,7 +515,7 @@ end
 YinkEventHandler = {} --event handlers
 
 	--local old_onEvent = world.onEvent
-	function YinkEventHandler:onEvent(event)		
+	function YinkEventHandler:onEvent(event)
 	
 --[[
 world.event.S_EVENT_LANDING_AFTER_EJECTION
