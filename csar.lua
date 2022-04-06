@@ -140,8 +140,10 @@ function csarInstance:setEjectionParams(object)
 	self.coa = object:getCoalition()
 	self.type = object:getTypeName()
 	self.playerName = object:getPlayerName()
+	self.playerName = object:getPlayerName()
 	self.category = object:getGroup():getCategory()
 	self.time = timer.getTime()
+	self.visible = true
 	
 	for k, v in next, net.get_player_list() do
 		if net.get_player_info(v , 'name') == self.playerName then
@@ -186,6 +188,7 @@ end
 function csarInstance:reset(point)
 	self.point = point
 	self.state = "ejected"
+	self.visible = true
 end
 
 function csarInstance:delete()
@@ -275,6 +278,15 @@ function csar.loop(args, time) --timer.scheduleFunction(csar.loop, {event.initia
 		return nil
 	end
 	
+	if unit:getCoalition() == 1 then
+		csar.updateLists()
+		csarList = csar.activeUnits.red
+	elseif unit:getCoalition() == 2 then
+		csar.updateLists()
+		csarList = csar.activeUnits.blue
+	end
+	
+	
 	local throwSmoke 	= true
 	local throwFlare	= true
 	local transmitting	= false
@@ -290,20 +302,7 @@ function csar.loop(args, time) --timer.scheduleFunction(csar.loop, {event.initia
 				csar.heliPassengers[unit:getName()][closestCSAR.objectName] = csar.getInstance(closestCSAR.objectName)
 				csar.heliPassengers[unit:getName()]["n"] = csar.heliPassengers[unit:getName()]["n"] + 1
 				trigger.action.outTextForGroup(unit:getGroup():getID(),  csar.heliPassengers[unit:getName()][closestCSAR.objectName].type .. " pilot ".. csar.heliPassengers[unit:getName()][closestCSAR.objectName].playerName .." extracted! Seats remaining: "..tostring(csarMaxPassengers[unit:getTypeName()] - csar.heliPassengers[unit:getName()]["n"]),10)
-				
-				if Unit.getByName(closestCSAR.objectName):getCoalition() == 1 then
-					for k,v in next, csar.activeUnits.red do
-						if v == closestCSAR.objectName then
-							table.remove(csar.activeUnits.red, k)
-						end
-					end
-				else
-					for k,v in next, csar.activeUnits.blue do
-						if v == closestCSAR.objectName then
-							table.remove(csar.activeUnits.blue, k)
-						end
-					end
-				end
+				csar.getInstance(closestCSAR.objectName).visible = false
 				Unit.getByName(closestCSAR.objectName):destroy()
 				csar.alreadySmoked[closestCSAR.objectName] = nil
 				csar.alreadyFlared[closestCSAR.objectName] = nil
@@ -502,13 +501,26 @@ function csar.list(objectName)
 	end
 	
 	for k, v in next, csar.instances do
-		if v.coa == coa then
+		if v.coa == coa and v.visible then
 			bearing = util.round(util.bearing(bulls, v.point))
 			distance = util.round(util.distance(bulls,v.point)/1000)
 			outputString = outputString .. "\n".. v.type .." Pilot " .. v.playerName .. " at bullseye " .. tostring(bearing) .. " for ".. tostring(distance).. "."
 		end
 	end
 	trigger.action.outTextForGroup(object:getGroup():getID(), outputString, 15)
+end
+
+function csar.updateLists()
+	csar.activeUnits.red = {}
+	csar.activeUnits.blue = {}
+	
+	for k, v in next, csar.instances do
+		if v.coa == 1 then
+			table.insert(csar.activeUnits.red, v.unitName)
+		elseif v.coa == 2 then		
+			table.insert(csar.activeUnits.blue, v.unitName)
+		end
+	end
 end
 ---------------------------------------------------------- event handlers
 
@@ -674,11 +686,11 @@ main function for spawning csar units
 											if v.category == Group.Category.AIRPLANE then
 												trigger.action.setUserFlag(tostring(v.playerID).."_lives_airplane",tonumber(trigger.misc.getUserFlag(v.playerID.."_lives_airplane")) - 1)
 												trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Airplane life returned for: "..v.playerName,5)
-												v:delete()									
+												v:delete()
 											elseif v.category == Group.Category.HELICOPTER then
 												trigger.action.setUserFlag(tostring(v.playerID).."_lives_helicopter",tonumber(trigger.misc.getUserFlag(v.playerID.."_lives_helicopter")) - 1)		
 												trigger.action.outTextForGroup(event.initiator:getGroup():getID(),"Helicopter life returned for: "..v.playerName,5)	
-												v:delete()										
+												v:delete()									
 											end
 										end
 									end
