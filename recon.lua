@@ -52,6 +52,16 @@ function util.round(num, numDecimalPlaces)
 	return math.floor(num * mult + 0.5) / mult
 end
 
+function util.distance( coord1 , coord2) --use z instead of y for getPoint()
+	
+	local x1 = coord1.x
+	local y1 = coord1.z
+	
+	local x2 = coord2.x
+	local y2 = coord2.z
+
+	return math.sqrt( (x2-x1)^2 + (y2-y1)^2 )
+end
 -----------------------------------------------------------------------------------------------------------------recon object Definitions
 reconInstance = {}
 recon.instances = {}
@@ -164,17 +174,19 @@ function reconInstance:addToTargetList(list)
 end
 
 function reconInstance:returnReconTargets()
-	
+	local count = 0
 	for k,v in next, self.targetList do
 		if v == nil then
 			self.targetList[k] = nil
 		else
 			if recon.detectedTargets[v:getName()] == nil then
 				recon.outMarkTable[self.coa](v)
+				count = count + 1
+				recon.detectedTargets[v:getName()] = v
 			end
 		end
 	end
-	return
+	return count
 end
 
 function recon.redOutMark(unit)
@@ -228,10 +240,6 @@ function recon.captureData(instance)
 	if instance.duration <= 0 and instance.loop then
 		instance.loop = false
 		trigger.action.outTextForGroup(instance.groupID,"ERROR: NO FILM",5,true)
-		
-		instance:returnReconTargets()
-		
-		instance.capturing = false
 		trigger.action.outTextForGroup(instance.groupID,"RECON MODE DISABLED ",5)
 		missionCommands.removeItemForGroup(instance.groupID,instance.index)
 		local index = missionCommands.addCommandForGroup(instance.groupID , "ENABLE RECON MODE" , nil , recon.control , instance)
@@ -311,6 +319,9 @@ function reconEventHandler:onEvent(event)
 	end
 	
 	if world.event.S_EVENT_DEAD == event.id then
+		if recon.detectedTargets[event.initiator:getName()] ~= nil then
+			recon.detectedTargets[event.initiator:getName()] = nil
+		end
 		return
 	end
 	
@@ -340,7 +351,42 @@ function reconEventHandler:onEvent(event)
 		end	
 		return
 	end
-
+	
+	if world.event.S_EVENT_LAND == event.id then
+		local instance
+		if recon.reconTypes[event.initiator:getTypeName()] then
+			
+			--trigger.action.outText("in recon valid table",20)
+			if recon.instances[event.initiator:getName()] ~= nil then
+			
+				instance = recon.getInstance(event.initiator:getName())
+				--trigger.action.outText("in instance table",20)
+				
+				missionCommands.removeItemForGroup(event.initiator:getGroup():getID(),instance.index)
+				
+				local bases = coalition.getAirbases(instance.coa)
+				local closestBase = bases[1]
+				local distance
+				local closestDistance = util.distance(event.initiator:getPoint(), closestBase:getPoint())
+				local pid
+				
+				for k, v in next, bases do
+					distance = util.distance(event.initiator:getPoint(), v:getPoint())
+					if distance <= closestDistance then
+						closestDistance = distance
+						closestBase = v
+					end
+				end
+				if closestDistance < 4000 then
+					local count = instance:returnReconTargets()
+					trigger.action.outTextForCoalition(instance.coa,event.initiator:getPlayerName() .. " gathered intel on " .. tostring(count) .. " targets.",5)
+				end
+				instance:setObjectParams(event.initiator)
+			end
+		end	
+		return
+	end
+	
 end
 
 world.addEventHandler(reconEventHandler)
