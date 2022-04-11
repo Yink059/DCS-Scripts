@@ -142,6 +142,7 @@ function recon.findTargets(instance)
 	end
 	
 	if altitude > minAlt and altitude < maxAlt then
+		trigger.action.circleToAll(-1 , math.random(8000,10000) , volume.params.point , volume.params.radius ,  {1, 0, 0, 1} , {1, 0, 0, 0.5} , 0 , false, tostring(altitude))
 		world.searchObjects(Object.Category.UNIT , volume , ifFound)
 		return targetList
 	end
