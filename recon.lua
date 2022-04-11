@@ -7,11 +7,7 @@ recon.reconTypes = {}
 recon.reconTypes["MiG-21Bis"] = true
 recon.reconTypes["AJS37"] = true
 
-recon.duration = 12
 recon.detectedTargets = {}
-recon.radius = 1000
-recon.minAlt = 500
-recon.maxAlt = 5000
 
 recon.parameters = {}
 recon.parameters["MiG-21Bis"] = {}
