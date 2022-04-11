@@ -315,7 +315,7 @@ function reconEventHandler:onEvent(event)
 	end
 	
 	if world.event.S_EVENT_DEAD == event.id then
-	
+		return
 	end
 	
 	if world.event.S_EVENT_TAKEOFF == event.id then
@@ -327,8 +327,9 @@ function reconEventHandler:onEvent(event)
 			
 				instance = recon.getInstance(event.initiator:getName())
 				--trigger.action.outText("in instance table",20)
-				instance:setObjectParams(event.initiator)
+				
 				missionCommands.removeItemForGroup(event.initiator:getGroup():getID(),instance.index)
+				instance:setObjectParams(event.initiator)
 			else
 				--trigger.action.outText("not in instance table",20)
 				instance = recon.createInstance(event.initiator)
