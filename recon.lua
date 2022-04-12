@@ -323,6 +323,13 @@ function reconEventHandler:onEvent(event)
 		if recon.detectedTargets[event.initiator:getName()] ~= nil then
 			recon.detectedTargets[event.initiator:getName()] = nil
 		end
+		if recon.marks.red[event.initiator:getName()] ~= nil then
+			trigger.action.removeMark(recon.marks.red[event.initiator:getName()])
+			recon.marks.red[event.initiator:getName()] = nil
+		elseif  recon.marks.blue[event.initiator:getName()] ~= nil then
+			trigger.action.removeMark(recon.marks.blue[event.initiator:getName()])
+			recon.marks.blue[event.initiator:getName()] = nil
+		end
 		return
 	end
 	
