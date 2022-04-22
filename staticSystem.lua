@@ -11,23 +11,27 @@ trigger.action.outText(tostring(staticObj[i]),10)
 currentDir = "C:/Users/brand/Documents/MoF/Files/"
 
 local blue_fileDynamic	= currentDir .. "blue_statics.txt"
-local blue_fileStatic		= currentDir .. "blue_statics_init.txt"
+local blue_fileStatic	= currentDir .. "blue_statics_init.txt"
 
 local red_fileDynamic	= currentDir .. "red_statics.txt"
 local red_fileStatic	= currentDir .. "red_statics_init.txt"
 
-local redFile		= currentDir .. "redPlayers.txt"
-local blueFile 	= currentDir .. "bluePlayers.txt"
+local redFile			= currentDir .. "redPlayers.txt"
+local blueFile 			= currentDir .. "bluePlayers.txt"
+
+local redUnits			= currentDir .. "redUnits.txt"
+local blueUnits			= currentDir .. "blueUnits.txt"
 
 local afC		= currentDir .. "airfieldControl.txt"
 groupCounter 	= 0
 markCounter		= 0
 
+--[[
 local f	= currentDir .. "slot.txt"
 local file 		= assert(io.open(f,"r"))
 local slotText	= file:read("*all")
 file:close()
-
+]]--
 
 local logiAmount = 20
 
@@ -37,6 +41,7 @@ function debugT(v)
 	trigger.action.outText(tostring(v),10)
 end
 
+--[[ --for putting ammo/fuel statics on farps
 do
 	local old_onEvent = world.onEvent
 	world.onEvent = function(event)
@@ -85,6 +90,7 @@ do
 		return old_onEvent(event)
 	end
 end
+]]--
 
 function mapMarkup(_,time) --for airbases
 
@@ -837,7 +843,7 @@ function writeGroupsToFile(coalition, file) -- collect strings and write to spec
 	
 end
 
-function spawnGroupsFromFile(coalition,file)
+function spawnGroupsFromFile(coalition, file)
 
 	local c = coalition
 	
@@ -854,7 +860,7 @@ function spawnGroupsFromFile(coalition,file)
 	local unit = {}
 	local unitCount = {}
 	
-	for k, groupV in next, groups do
+	for k, groupV in next, groups do -- for each group in the file
 	
 		groupSplit = split(groupV,'`')
 		groupName = groupSplit[1]
@@ -863,30 +869,26 @@ function spawnGroupsFromFile(coalition,file)
 		unitCount = #groupList
 		
 		if coalition == 1 then
-				group["country"] 	= country.id.RUSSIA
-			elseif coalition == 2 then
-				group["country"] 	= country.id.USA
-			end
-			unit["type"] = 
-			group["category"]	= 2
-			group["name"] 		= "infantry_".. tostring(coa).."_G_"..tostring(timer.getTime()) .. "_" .. heliName
-			group["task"] 		= "Ground Nothing"
-			group["units"]		= {}
+			group["country"] 	= country.id.RUSSIA
+		elseif coalition == 2 then
+			group["country"] 	= country.id.USA
+		end
+		group["category"]	= 2
+		group["name"] 		= groupName
+		group["task"] 		= "Ground Nothing"
+		group["units"]		= {}
 		
-		for k2, unitV in next, groupList do
-			unit = {}			
-			for i = 1, unitCount do
-				--TODO------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-				unitList = split(unitV,",")
-				group["units"][i] = {}
-				group["units"][i]["name"] 		= "infantry_" .. tostring(i) .. "_" .. tostring(timer.getTime()) .. "_" .. heliName
-				group["units"][i]["x"] 			= x + (18 * math.cos(math.rad( (i / unitCount) * 360 )))
-				group["units"][i]["y"]			= y + (18 * math.sin(math.rad( (i / unitCount) * 360 )))
-				group["units"][i]["heading"]	= math.rad((i / unitCount) * 360 )
-				group["units"][i]["type"]		= unit["type"]
-			end
+		for i = 1, unitCount do
+			unitList = split(unitV,",")
+			group["units"][i] = {}
+			group["units"][i]["name"] 		= unitList[1]				
+			group["units"][i]["type"]		= unitList[2]
+			group["units"][i]["x"] 			= unitList[3].x
+			group["units"][i]["y"]			= unitList[3].z
+			group["units"][i]["heading"]	= unitList[4]
 		end
 		
+		coalition.addGroup(group["country"],group["category"],group)
 	end
 	
 end
@@ -896,7 +898,7 @@ end
 
 ------------------------------------------------------------------------------------------------------------------------ Function Scheduling
 
-
+--[[
 fileTest = assert(io.open(red_fileDynamic,"r"))
 local bool = fileTest:read("*l")
 fileTest:close()
@@ -927,6 +929,9 @@ timer.scheduleFunction(mapMarkupStatics, {}, timer.getTime()+16)
 
 
 --timer.scheduleFunction(tankerDespawn, {}, timer.getTime()+30)
+]]--
+
+
 
 ------------------------------------------------------------------------------------------------------------------------ EOF
 --loadStaticsStrategic(temp, "red", "spawnN")
