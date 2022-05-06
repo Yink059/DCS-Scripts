@@ -10,16 +10,14 @@
 		seperate template files for dynamic spawning on capture condition
 			airfield control ^^^^^^
 
-	airfield control functions
+	airfield control functions - recapture immmediately?
 		make sure only defence units spawn back in
 ]]--
 
-currentDir = lfs.writedir() .. "/longbow/"
+currentDir = lfs.writedir() .. "longbow/"
 
 local blueDefensesDir	= currentDir .. "blue_defense_templates/"
-
 local redDefensesDir	= currentDir .. "red_defense_templates/"
-
 local defenseFileTable = { redDefensesDir , blueDefensesDir}
 
 local defenseNameTemplate = "_defense_template.txt"
@@ -57,12 +55,9 @@ local function split(pString, pPattern) --string.split
    return Table
 end
 
-
 local function debugT(v)
 	trigger.action.outText(tostring(v),10)
 end
-
-
 
 function yss.mapMarkup(_,time) --for airbases
 
@@ -141,7 +136,6 @@ function airfieldEventHandler:onEvent(event)
 		if spawnDefenses then
 			local coa = event.initiator:getCoalition()
 			local fileName = defenseFileTable[coa] .. event.place:getName() .. defenseNameTemplate
-			
 			
 			yss.spawnGroupsFromFile(coa, fileName)
 		end		
@@ -254,3 +248,13 @@ function yss.spawnGroupsFromFile(coa, file)
 	end
 	
 end
+
+
+
+------------------------------------------------------------------------------------------------------------------------ Execution
+
+
+local testFile = currentDir .. 'test.txt'
+
+--yss.writeGroupsToFile(1, testFile)
+--yss.spawnGroupsFromFile(1,testFile)
