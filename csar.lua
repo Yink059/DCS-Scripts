@@ -522,6 +522,31 @@ function csar.updateLists()
 		end
 	end
 end
+
+function csar.resetLives(pid)
+	local livesAirplanes 	= trigger.misc.getUserFlag(tostring(pid).."_lives_airplane")
+	local airplaneLimit 	= trigger.misc.getUserFlag("lifeLimit_airplane")
+	
+	local livesHelicopter 	= trigger.misc.getUserFlag(tostring(pid).."_lives_helicopter")
+	local helicopterLimit 	= trigger.misc.getUserFlag("lifeLimit_helicopter")
+	
+	if livesAirplanes >= airplaneLimit then
+		trigger.action.setUserFlag(tostring(pid).."_lives_airplane",tonumber(trigger.misc.getUserFlag(pid.."_lives_airplane")) - 1)
+	end
+	
+	if livesHelicopter >= helicopterLimit then
+		trigger.action.setUserFlag(tostring(pid).."_lives_helicopter",tonumber(trigger.misc.getUserFlag(pid.."_lives_helicopter")) - 1)
+	end
+	
+	return	
+end
+
+csar.playersOutOfLives = {}
+
+function csar.resetLoop(args, time)
+	
+	return time + 30
+end
 ---------------------------------------------------------- event handlers
 
 YinkEventHandler = {} --event handlers
