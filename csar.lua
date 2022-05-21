@@ -14,6 +14,7 @@ csarMaxPassengers["SA342M"]			= 3
 
 lives = {}
 lives.activeUnits = {}
+lives.unitNames = {}
 local unitExemption = {}
 
 unitExemption["Mi-8MT"]	 = true
@@ -140,7 +141,6 @@ function csarInstance:setEjectionParams(object)
 	self.coa = object:getCoalition()
 	self.type = object:getTypeName()
 	self.playerName = object:getPlayerName()
-	self.playerName = object:getPlayerName()
 	self.category = object:getGroup():getCategory()
 	self.time = timer.getTime()
 	self.visible = true
@@ -171,6 +171,15 @@ end
 function csar.getInstance(unitName)
 	for k, v in next, csar.instances do
 		if v.unitName == unitName then
+			return v
+		end
+	end
+	return nil
+end
+
+function csar.getInstanceByPlayerName(playerName)
+	for k, v in next, csar.instances do
+		if v.playerName == playerName then
 			return v
 		end
 	end
@@ -523,30 +532,132 @@ function csar.updateLists()
 	end
 end
 
+csar.playersOutOfLives = {}
+csar.playersOutOfLives["heli"] = {}
+csar.playersOutOfLives["plane"] = {}
+csar.playersOutOfLives["resetting_plane"] = {}
+csar.playersOutOfLives["resetting_heli"] = {}
+
 function csar.resetLives(pid)
+	
+	local name 	= net.get_player_info(pid , 'name')
+	local coa 	= net.get_player_info(pid , 'side')
+	local slot 	= net.get_player_info(pid , 'slot')
+	local ucid 	= tostring(net.get_player_info(pid , 'ucid'))
+	
 	local livesAirplanes 	= trigger.misc.getUserFlag(tostring(pid).."_lives_airplane")
 	local airplaneLimit 	= trigger.misc.getUserFlag("lifeLimit_airplane")
 	
 	local livesHelicopter 	= trigger.misc.getUserFlag(tostring(pid).."_lives_helicopter")
 	local helicopterLimit 	= trigger.misc.getUserFlag("lifeLimit_helicopter")
 	
-	if livesAirplanes >= airplaneLimit then
-		trigger.action.setUserFlag(tostring(pid).."_lives_airplane",tonumber(trigger.misc.getUserFlag(pid.."_lives_airplane")) - 1)
+	trigger.action.outText(tostring(livesAirplanes),5)
+	trigger.action.outText(tostring(airplaneLimit),5)
+	
+	
+	if livesAirplanes < airplaneLimit then
+		csar.playersOutOfLives["plane"][ucid] = false
 	end
 	
-	if livesHelicopter >= helicopterLimit then
-		trigger.action.setUserFlag(tostring(pid).."_lives_helicopter",tonumber(trigger.misc.getUserFlag(pid.."_lives_helicopter")) - 1)
+	if livesHelicopter < helicopterLimit then
+		csar.playersOutOfLives["heli"][ucid] = false
+	end
+	
+	trigger.action.outText("lives: " .. tostring(livesAirplanes >= airplaneLimit),5)
+	trigger.action.outText("player out of lives?: " .. tostring(csar.playersOutOfLives["plane"][ucid]),5)
+	
+	local unit, category
+	local exists, bool = false, false
+	for k, v in next, coalition.getPlayers(1) do
+		if v:getPlayerName() == name then
+			unit = v
+			category = unit:getGroup():getCategory()
+			exists = true
+			break
+		end
+	end	
+	for k, v in next, coalition.getPlayers(2) do
+		if v:getPlayerName() == name then
+			unit = v
+			category = unit:getGroup():getCategory()
+			exists = true
+			break
+		end
+	end	
+	
+	bool = (coa == 0) or (category ~= 0)
+	
+	if livesAirplanes >= airplaneLimit and bool and not csar.playersOutOfLives["resetting_plane"][ucid] then
+
+		trigger.action.outText('resetting!',5)
+		csar.playersOutOfLives["resetting_plane"][ucid] = true
+		
+		timer.scheduleFunction(
+			function(pid2)
+				
+				local name = net.get_player_info(pid2 , 'name')
+				local unit
+				local category = -1
+				local exists, bool = false, false
+				for k, v in next, coalition.getPlayers(1) do
+					if v:getPlayerName() == name then
+						unit = v
+						category = unit:getGroup():getCategory()
+						exists = true
+						break
+					end
+				end	
+				for k, v in next, coalition.getPlayers(2) do
+					if v:getPlayerName() == name then
+						unit = v
+						category = unit:getGroup():getCategory()
+						exists = true
+						break
+					end
+				end			
+				
+				local instance
+				local ucid2	= tostring(net.get_player_info(pid , 'ucid'))
+				csar.playersOutOfLives["resetting_plane"][ucid2] = false
+				if tonumber(trigger.misc.getUserFlag(pid2.."_lives_airplane")) >= airplaneLimit and category ~= 0 then
+					trigger.action.setUserFlag(tostring(pid2).."_lives_airplane",airplaneLimit - 1) 
+					instance = csar.getInstanceByPlayerName(net.get_player_info(pid , 'name'))
+					if instance ~= nil then
+						instance:delete()
+					end
+				end
+			end,
+			pid,
+			timer.getTime() + 10
+		)
+		
+	end
+	
+	if livesHelicopter >= helicopterLimit and coa == 0 and not csar.playersOutOfLives["heli"][ucid] then
+		
+		timer.scheduleFunction(
+			function(pid2)
+				if tonumber(trigger.misc.getUserFlag(pid2.."_lives_airplane")) >= helicopterLimit then
+					trigger.action.setUserFlag(tostring(pid2).."_lives_airplane", helicopterLimit - 1) 
+				end
+			end,
+			pid,
+			timer.getTime() + 10
+		)
 	end
 	
 	return	
 end
 
-csar.playersOutOfLives = {}
-
 function csar.resetLoop(args, time)
-	
-	return time + 30
+
+	for k, v in next, net.get_player_list() do
+		local pid = net.get_player_info(v , 'id')
+		csar.resetLives(pid)
+	end
+	return time + 5
 end
+
 ---------------------------------------------------------- event handlers
 
 YinkEventHandler = {} --event handlers
