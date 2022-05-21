@@ -64,7 +64,7 @@ end
 
 function yinkSlotBlocker.onGameEvent(eventName, ...)
 	if eventName ~= "crash" then return end
-
+	
 	local allow = yinkSlotBlocker.allowChangeSlot(arg[1],arg[2])
 	if not allow then
 		net.force_player_slot(arg[1],0,'')
@@ -72,9 +72,17 @@ function yinkSlotBlocker.onGameEvent(eventName, ...)
 end
 
 function yinkSlotBlocker.onPlayerTrySendChat(pid, msg, all)
-
+	
+	local side
+	
 	if net.get_player_info(pid, 'side') == 0 and pid == 1 then
 		return ""
+	end
+	
+	if msg == "-test" then
+		for k, v in next, net.get_player_list( ) do
+			net.send_chat_to(tostring(v), pid)
+		end
 	end
 	
 	if msg == "-bail" then
@@ -83,6 +91,43 @@ function yinkSlotBlocker.onPlayerTrySendChat(pid, msg, all)
 		local _status,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..playerName.."_bail".."', 1); ")
 		return "bailing out!"
 	end
+	
+	if split(msg," ")[1] == "-reset" then
+	
+		local lifeLimitAirplane,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('lifeLimit_airplane'); ")
+		local lifeLimitHelicopter,_error  = net.dostring_in('server', " return trigger.misc.getUserFlag('lifeLimit_helicopter'); ")
+	
+		if split(msg," ")[2] == "blue" then
+			net.send_chat_to('resetting blue lives', pid)
+			for k, v in next, net.get_player_list() do
+				side = net.get_player_info(v , 'side')
+				if tonumber(side) == 2 then
+					local playerLivesAirplane,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..v.."'..'_lives_airplane',0); ")
+					local playerLivesHelicopter,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..v.."'..'_lives_helicopter',0); ")
+				end
+			end
+			return
+		elseif split(msg," ")[2] == "red" then
+			net.send_chat_to('resetting red lives', pid)
+			for k, v in next, net.get_player_list() do
+				side = net.get_player_info(v , 'side')
+				if tonumber(side) == 2 then
+					local playerLivesAirplane,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..v.."'..'_lives_airplane',0); ")
+					local playerLivesHelicopter,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..v.."'..'_lives_helicopter',0); ")
+				end
+			end
+			return
+		end
+		
+		for k, v in next, net.get_player_list() do
+			if string.sub(msg,8,#msg)  == net.get_player_info(v , 'name') then
+				
+				net.send_chat_to('resetting '..net.get_player_info(v , 'name')..' lives', pid)
+				local playerLivesAirplane,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..split(msg," ")[2].."'..'_lives_airplane',0); ")
+				local playerLivesHelicopter,_error  = net.dostring_in('server', " return trigger.action.setUserFlag('"..split(msg," ")[2].."'..'_lives_helicopter',0); ")
+			end
+		end		
+	end	
 	
 end
 
