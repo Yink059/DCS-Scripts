@@ -1,6 +1,7 @@
 
 local recon = {}
 local util = {}
+util.vec = {}
 
 recon.reconTypes = {}
 
@@ -13,19 +14,23 @@ recon.parameters = {}
 recon.parameters["MiG-21Bis"] = {}
 recon.parameters["MiG-21Bis"].minAlt 	= 500
 recon.parameters["MiG-21Bis"].maxAlt 	= 5000
+recon.parameters["MiG-21Bis"].maxRoll	= 5
+recon.parameters["MiG-21Bis"].maxPitch	= 5
 recon.parameters["MiG-21Bis"].fov		= 32
 recon.parameters["MiG-21Bis"].duration	= 15
 recon.parameters["MiG-21Bis"].offset	= math.rad(10)
-recon.parameters["MiG-21Bis"].name	= "MiG-21R"
+recon.parameters["MiG-21Bis"].name		= "MiG-21R"
 
 
 recon.parameters["AJS37"] = {}
 recon.parameters["AJS37"].minAlt 	= 50
 recon.parameters["AJS37"].maxAlt 	= 600
+recon.parameters["AJS37"].maxRoll	= 7
+recon.parameters["AJS37"].maxPitch	= 7
 recon.parameters["AJS37"].fov		= 60
 recon.parameters["AJS37"].duration	= 20
 recon.parameters["AJS37"].offset	= math.rad(70)
-recon.parameters["AJS37"].name	= "SF 37"
+recon.parameters["AJS37"].name		= "SF 37"
 
 ------------------------------------------------------------------------------------------------------------------------util Definitions
 
@@ -39,9 +44,9 @@ function util.offsetCalc(object)
 	local x = object:getPoint().x + ((math.cos(rad) * distance ))
 	local y = object:getPoint().z + (math.sin(rad) * distance )
 				
-				--trigger.action.outText(tostring( distance ),5)
-				--trigger.action.outText(tostring((math.cos(rad) * distance )),5)
-				--trigger.action.outText(tostring((math.sin(rad) * distance )),5)
+	--trigger.action.outText(tostring( distance ),5)
+	--trigger.action.outText(tostring((math.cos(rad) * distance )),5)
+	--trigger.action.outText(tostring((math.sin(rad) * distance )),5)
 	
 	return {x = x, z = y}
 end
@@ -61,6 +66,41 @@ function util.distance( coord1 , coord2) --use z instead of y for getPoint()
 	local y2 = coord2.z
 
 	return math.sqrt( (x2-x1)^2 + (y2-y1)^2 )
+end
+
+function util.vec.cp(vec1, vec2) --mist
+	return { x = vec1.y*vec2.z - vec1.z*vec2.y, y = vec1.z*vec2.x - vec1.x*vec2.z, z = vec1.x*vec2.y - vec1.y*vec2.x}
+end
+
+function util.vec.dp (vec1, vec2) --mist
+	return vec1.x*vec2.x + vec1.y*vec2.y + vec1.z*vec2.z
+end
+
+function util.vec.mag(vec) --mist
+	return (vec.x^2 + vec.y^2 + vec.z^2)^0.5
+end
+
+function util.getRoll(unit) --mist
+	local unitpos = unit:getPosition()
+	if unitpos then
+		local cp = util.vec.cp(unitpos.x, {x = 0, y = 1, z = 0})
+		
+		local dp = util.vec.dp(cp, unitpos.z)
+		
+		local Roll = math.acos(dp/(util.vec.mag(cp)*util.vec.mag(unitpos.z)))
+		
+		if unitpos.z.y > 0 then
+			Roll = -Roll
+		end
+		return Roll
+	end
+end
+
+function util.getPitch(unit) --mist
+	local unitpos = unit:getPosition()
+	if unitpos then
+		return math.asin(unitpos.x.y)
+	end
 end
 -----------------------------------------------------------------------------------------------------------------recon object Definitions
 reconInstance = {}
@@ -120,7 +160,13 @@ function recon.findTargets(instance)
 	
 	local minAlt 	= recon.parameters[instance.type].minAlt
 	local maxAlt 	= recon.parameters[instance.type].maxAlt
+	local maxRoll	= recon.parameters[instance.type].maxRoll
+	local maxPitch	= recon.parameters[instance.type].maxPitch
 	local fov		= recon.parameters[instance.type].fov
+	
+	local roll 	= math.abs(math.deg(util.getRoll(instance.object)))
+	local pitch = math.abs(math.deg(util.getPitch(instance.object)))
+	local isFlat = (roll < maxRoll) and (pitch < maxPitch)
 	
 	local radiusCalculated = altitude * math.tan(math.rad(fov))
 	local offset = util.offsetCalc(instance.object)
@@ -131,19 +177,21 @@ function recon.findTargets(instance)
 			radius = radiusCalculated
 		}
 	}
+	
 	local targetList = {}
 	local ifFound = function(foundItem)
 		if foundItem:getGroup():getCategory() == 2 and foundItem:getCoalition() ~= instance.coa then--and string.sub(foundItem:getName(),1,6) == "Sector" then
 			targetList[foundItem:getName()] = foundItem
+			
 			--trigger.action.smoke(foundItem:getPoint(), 1)
 			--trigger.action.outText(tostring(foundItem:getName()),6)
 			return true
 		end
 	end
 	
-	if altitude > minAlt and altitude < maxAlt then
-		trigger.action.circleToAll(-1 , math.random(8000,10000) , volume.params.point , volume.params.radius ,  {1, 0, 0, 1} , {1, 0, 0, 0.5} , 0 , false, tostring(altitude))
+	if altitude > minAlt and altitude < maxAlt and isFlat then
 		world.searchObjects(Object.Category.UNIT , volume , ifFound)
+		--trigger.action.circleToAll(-1 , math.random(8000,10000) , volume.params.point , volume.params.radius ,  {1, 0, 0, 1} , {1, 0, 0, 0.5} , 0 , false, tostring(altitude))
 		return targetList
 	end
 	return {}
@@ -321,14 +369,12 @@ function reconEventHandler:onEvent(event)
 	
 	if world.event.S_EVENT_DEAD == event.id then
 		if recon.detectedTargets[event.initiator:getName()] ~= nil then
+			if event.initiator:getCoalition() == 2 then
+				trigger.action.removeMark(recon.marks.blue[event.initiator:getName()])
+			elseif event.initiator:getCoalition() == 1 then
+				trigger.action.removeMark(recon.marks.red[event.initiator:getName()])
+			end
 			recon.detectedTargets[event.initiator:getName()] = nil
-		end
-		if recon.marks.red[event.initiator:getName()] ~= nil then
-			trigger.action.removeMark(recon.marks.red[event.initiator:getName()])
-			recon.marks.red[event.initiator:getName()] = nil
-		elseif  recon.marks.blue[event.initiator:getName()] ~= nil then
-			trigger.action.removeMark(recon.marks.blue[event.initiator:getName()])
-			recon.marks.blue[event.initiator:getName()] = nil
 		end
 		return
 	end
