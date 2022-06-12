@@ -16,11 +16,10 @@
 
 currentDir = lfs.writedir() .. "longbow/"
 
-local blueDefensesDir	= currentDir .. "blue_defense_templates/"
-local redDefensesDir	= currentDir .. "red_defense_templates/"
-local defenseFileTable = { redDefensesDir , blueDefensesDir}
-
-local defenseNameTemplate = "_defense_template.txt"
+local defenseNameTemplate 	= "_defense_template.txt"
+local blueDefensesDir		= currentDir .. "blue_defense_templates/"
+local redDefensesDir		= currentDir .. "red_defense_templates/"
+local defenseFileTable 		= { redDefensesDir , blueDefensesDir}
 
 --[[
 local f	= currentDir .. "slot.txt"
@@ -28,8 +27,6 @@ local file 		= assert(io.open(f,"r"))
 local slotText	= file:read("*all")
 file:close()
 ]]--
-
-local logiAmount = 20
 
 local yss = {} --yink save system
 
@@ -115,8 +112,8 @@ end
 
 function yss.airfieldSwing(airfieldName)
 
-	local oldController = airfields[airfieldName]
-	airfield = Airbase.getByName(airfieldName)
+	local oldController = yss.airfields[airfieldName]
+	local airfield = Airbase.getByName(airfieldName)
 	
 	if oldController ~= airfield:getCoalition() then
 		return true
@@ -139,7 +136,7 @@ function airfieldEventHandler:onEvent(event)
 			
 			yss.spawnGroupsFromFile(coa, fileName)
 		end		
-		yss.saveAirfields()
+		yss.airfields = yss.saveAirfields()
 	end
 	
 end
