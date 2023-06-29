@@ -2,6 +2,159 @@
 
 
 recon = {}
+
+recon.pointsPerInfra = 5
+recon.pointsPerUnit = 0.25
+
+recon.airframes = {}
+recon.airframes["MiG-21Bis"] = {}
+recon.airframes["MiG-21Bis"]["АЩАФА-5"] = {
+	"АЩАФА-5",--name,
+	"MiG-21Bis",--typeName,
+	nil,--unitName,
+	-90,--pitch,
+	0,--roll,
+	0,--yaw,
+	20,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	15000,--maxDistance,
+	true,--infra (true - picks up only statics, false - picks up units)
+	30,--film count
+}
+
+recon.airframes["MiG-21Bis"]["АФА-39"] = {
+	"АФА-39",--name,
+	"MiG-21Bis",--typeName,
+	nil,--unitName,
+	-30,--pitch,
+	0,--roll,
+	0,--yaw,
+	35,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	7000,--maxDistance,
+	false,--infra
+	30,--film count
+}
+
+
+recon.airframes["AJS37"] = {}
+recon.airframes["AJS37"]["SKa 31"] = {
+	"SKa 31",--name,
+	"AJS37",--typeName,
+	nil,--unitName,
+	-90,--pitch,
+	0,--roll,
+	0,--yaw,
+	20,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	15000,--maxDistance,
+	true,--infra (true - picks up only statics, false - picks up units)
+	30,--film count
+}
+
+recon.airframes["AJS37"]["SKa 24C"] = {
+	"SKa 24C",--name,
+	"AJS37",--typeName,
+	nil,--unitName,
+	-30,--pitch,
+	0,--roll,
+	0,--yaw,
+	35,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	7000,--maxDistance,
+	false,--infra
+	30,--film count
+}
+
+recon.airframes["F-5E-3"] = {}
+recon.airframes["F-5E-3"]["KS-121B"] = {
+	"KS-121B",--name,
+	"F-5E-3",--typeName,
+	nil,--unitName,
+	-90,--pitch,
+	0,--roll,
+	0,--yaw,
+	20,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	15000,--maxDistance,
+	true,--infra (true - picks up only statics, false - picks up units)
+	30,--film count
+}
+
+recon.airframes["F-5E-3"]["KS-121A"] = {
+	"KS-121A",--name,
+	"F-5E-3",--typeName,
+	nil,--unitName,
+	-30,--pitch,
+	0,--roll,
+	0,--yaw,
+	35,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	7000,--maxDistance,
+	false,--infra
+	30,--film count
+}
+
+
+recon.airframes["MiG-19P"] = {}
+recon.airframes["MiG-19P"]["АЩАФА-5"] = {
+	"АЩАФА-5",--name,
+	"MiG-19P",--typeName,
+	nil,--unitName,
+	-90,--pitch,
+	0,--roll,
+	0,--yaw,
+	20,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	15000,--maxDistance,
+	true,--infra (true - picks up only statics, false - picks up units)
+	30,--film count
+}
+
+recon.airframes["MiG-19P"]["АФА-39"] = {
+	"АФА-39",--name,1
+	"MiG-19P",--typeName,2
+	nil,--unitName,3
+	-30,--pitch,4
+	0,--roll,5
+	0,--yaw,6
+	35,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	7000,--maxDistance,9
+	false,--infra,10
+	30,--film count
+}
+
+
+recon.airframes["Mirage-F1CE"] = {}
+recon.airframes["Mirage-F1CE"]["Presto Pod"] = {
+	"Presto Pod",--name,
+	"Mirage-F1CE",--typeName,
+	nil,--unitName,
+	-90,--pitch,
+	0,--roll,
+	0,--yaw,
+	20,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	15000,--maxDistance,
+	true,--infra (true - picks up only statics, false - picks up units)
+	30,--film count
+}
+
+recon.airframes["Mirage-F1CE"]["Omera 33"] = {
+	"Omera 33",--name,
+	"Mirage-F1CE",--typeName,
+	nil,--unitName,
+	-30,--pitch,
+	0,--roll,
+	0,--yaw,
+	35,--horizontalHalfAngleFOV,
+	20,--verticalHalfAngleFOV,
+	7000,--maxDistance,
+	false,--infra
+	30,--film count
+}
+
 camera = {}
 camera.instances = {}
 
