@@ -233,10 +233,12 @@ function ewr.sortFriendlyListFromUnit(unitName)
 		for i1,group in next, coalition.getGroups(1 , 0) do
 			for i2, unit in next, group:getUnits() do
 				if unit:getName() ~= unitName then
-					unitTable = {}
-					unitTable.object = unit
-					unitTable.position = unit:getPosition()
-					targetList[unit:getName()] = unitTable
+					if unit:isActive() and unit:inAir() then
+						unitTable = {}
+						unitTable.object = unit
+						unitTable.position = unit:getPosition()
+						targetList[unit:getName()] = unitTable
+					end
 				end
 			end
 		end
@@ -244,10 +246,12 @@ function ewr.sortFriendlyListFromUnit(unitName)
 		for i1,group in next, coalition.getGroups(2 , 0) do
 			for i2, unit in next, group:getUnits() do
 				if unit:getName() ~= unitName then
-					unitTable = {}
-					unitTable.object = unit 
-					unitTable.position = unit:getPosition()
-					targetList[unit:getName()] = unitTable
+					if unit:isActive() and unit:inAir() then
+						unitTable = {}
+						unitTable.object = unit 
+						unitTable.position = unit:getPosition()
+						targetList[unit:getName()] = unitTable
+					end
 				end
 			end
 		end
