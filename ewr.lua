@@ -7,18 +7,6 @@ todo:
 ]]
 --
 
-ewr = {}
---unused
-ewr.spawnTypeName		= "1L13 EWR"
---add/remove type names for gathering contacts
-ewr.types				= {"55G6 EWR", "1L13 EWR","E-3A","E-2C","A-50","FPS-117"}
-ewr.refreshTime 		= 25
-ewr.pictureLimit 		= 5
-ewr.closeTargetRadius 	= 10000 --meters for god sight
-ewr.debugging 			= false
-ewr.maxDetectionRange	= 400000
-
-
 local function round(num, numDecimalPlaces)
 	if num == 0 then return 0 end
 
@@ -77,6 +65,9 @@ ewr.lastUpdateTime     = 0
 
 local function heading(unitName)
 	local unit = Unit.getByName(unitName)
+	if unit == nil then return 0 end
+	if not unit:isExist() then return 0 end
+
 	local unitPos = unit:getPosition()
 	local headingRad = math.atan2(unitPos.x.z, unitPos.x.x)
 
@@ -110,7 +101,7 @@ local function unitConversionOutput(unitName, bearing, distance, altitude, dir, 
 			dist = string.format("%1.1f", dist)
 		end
 		if alt >= 1 then
-			alt = tostring(round(alt, 1))
+			alt = tostring(util.round(alt, 1))
 		else
 			alt = string.format("%1.1f", alt)
 		end
@@ -408,8 +399,8 @@ function ewr.bogeyDope(unitName)
 		trigger.action.outTextForUnit(unit:getID(), "No targets detected.", 10, true)
 		return
 	end
-	for i, unitTable in next, list do
-		local unitTable = unitTable[4]
+	for i, unitTable1 in next, list do
+		local unitTable = unitTable1[4]
 		if unitTable.unit ~= nil then
 			if unitTable.unit:isExist() then
 				if unitTable.unit:getCoalition() ~= unit:getCoalition() then
@@ -450,16 +441,17 @@ function ewr.picture(unitName)
 		return
 	end
 
-	for k, unitTable in pairs(list) do
+	for k, unitTable1 in pairs(list) do
 		if counter >= ewr.pictureLimit then break end
-		local unitTable = unitTable[4]
+		local unitTable = unitTable1[4]
 		local bearing = ewr.bearing(unit:getPoint(), unitTable.point)
 		local altitude = unitTable.point.y
 		local distance = ewr.distance2(unit:getPoint(), unitTable.point)
 		local direction = bearing - unitTable.heading
 		local dir = ewr.directionDefines(direction)
 		output = output ..
-			unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type)
+			unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type) ..
+			"\n"
 		counter = counter + 1
 	end
 
@@ -468,7 +460,7 @@ function ewr.picture(unitName)
 	return
 end
 
-function ewr.bomber_picture(unitName) --unused
+function ewr.bomber_picture(unitName)
 	local output = ewr.returnLastUpdateTime()
 	local ewrList = ewr.getTargetListFromUnit(unitName)
 	local closeList = ewr.getCloseTargetsFromUnit(unitName)
@@ -488,8 +480,8 @@ function ewr.bomber_picture(unitName) --unused
 		return
 	end
 
-	for k, unitTable in pairs(list) do
-		local unitTable = unitTable[4]
+	for k, unitTable1 in pairs(list) do
+		local unitTable = unitTable1[4]
 		if type[unitTable.type] == true then
 			if counter >= ewr.pictureLimit then break end
 			local bearing = ewr.bearing(unit:getPoint(), unitTable.point)
@@ -498,7 +490,8 @@ function ewr.bomber_picture(unitName) --unused
 			local direction = bearing - unitTable.heading
 			local dir = ewr.directionDefines(direction)
 			output = output ..
-				unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type)
+				unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type)..
+				"\n"
 			counter = counter + 1
 		end
 	end
@@ -690,8 +683,8 @@ function ewrEventHandler:onEvent(event)
 				ewr.friendlyPicture, event.initiator:getName())
 			missionCommands.addCommandForGroup(event.initiator:getGroup():getID(), "Toggle Picture Auto Display", subMenu,
 				ewr.toggleAutoDisplay, event.initiator:getName())
-			--missionCommands.addCommandForGroup(event.initiator:getGroup():getID(), "Request Bomber Intercepts", subMenu,
-			--	ewr.bomber_picture, event.initiator:getName())
+			missionCommands.addCommandForGroup(event.initiator:getGroup():getID(), "Request Bomber Intercepts", subMenu,
+				ewr.bomber_picture, event.initiator:getName())
 			missionCommands.addCommandForGroup(event.initiator:getGroup():getID(), "Swap Distance Units", subMenu,
 				ewr.swapDistanceUnits, event.initiator:getName())
 			local units
