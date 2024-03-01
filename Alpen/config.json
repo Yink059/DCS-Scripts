@@ -1,0 +1,8 @@
+{
+    "reset_time" : 43200,
+    "starting_lives": 6,
+    "lives_cost" : {
+        "plane" : 2,
+        "helicopter" : 1
+    }
+}
