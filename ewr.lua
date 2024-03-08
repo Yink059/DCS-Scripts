@@ -8,10 +8,11 @@ todo:
 --
 
 local function round(num, numDecimalPlaces)
-	if num == 0 then return 0 end
 
-	local mult = 10 ^ (numDecimalPlaces or 0)
-	return math.floor(num * mult + 0.5) / mult
+    if num == 0 then return 0 end
+    
+    local mult = 10^(numDecimalPlaces or 0)
+    return math.floor(num * mult + 0.5) / mult
 end
 
 local function logger(t, ...)
@@ -101,7 +102,7 @@ local function unitConversionOutput(unitName, bearing, distance, altitude, dir, 
 			dist = string.format("%1.1f", dist)
 		end
 		if alt >= 1 then
-			alt = tostring(util.round(alt, 1))
+			alt = tostring(round(alt, 1))
 		else
 			alt = string.format("%1.1f", alt)
 		end
@@ -310,19 +311,27 @@ function ewr.getCloseTargetsFromUnit(unitName)
 
 	world.searchObjects(Object.Category.UNIT, volS, ifFound)
 
-	local sortedList = {}
+	local nonSortedList = {}
 
-	for k, v in pairs(foundUnits) do
-		if v ~= nil then
-			if v:isExist() then
-				table.insert(sortedList,
-					{ v:getName(), ewr.distance2(unit:getPoint(), v:getPoint()), math.deg(math.atan2(v:getPosition().x.z,
-						v:getPosition().x.x) + 2 * math.pi) })
+	for k, aircraft in pairs(foundUnits) do
+		if aircraft ~= nil then
+			if aircraft:isExist() then
+				local unitTable = {}
+				unitTable["position"] = aircraft:getPosition()
+				unitTable["point"] = aircraft:getPoint()
+				unitTable["heading"] = heading(aircraft:getName())
+				unitTable["name"] = aircraft:getName()
+				unitTable["playerName"] = aircraft:getPlayerName()
+				unitTable["unit"] = aircraft
+				unitTable["type"] = aircraft:getTypeName()
+				table.insert(nonSortedList,
+					{ unitTable.name, ewr.distance2(unit:getPoint(), unitTable.point), headingPos(unitTable.position),
+						unitTable })
 			end
 		end
 	end
 
-	return sortedList
+	return nonSortedList
 end
 
 function ewr.sortFriendlyListFromUnit(unitName)
@@ -444,15 +453,17 @@ function ewr.picture(unitName)
 	for k, unitTable1 in pairs(list) do
 		if counter >= ewr.pictureLimit then break end
 		local unitTable = unitTable1[4]
-		local bearing = ewr.bearing(unit:getPoint(), unitTable.point)
-		local altitude = unitTable.point.y
-		local distance = ewr.distance2(unit:getPoint(), unitTable.point)
-		local direction = bearing - unitTable.heading
-		local dir = ewr.directionDefines(direction)
-		output = output ..
-			unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type) ..
-			"\n"
-		counter = counter + 1
+		if unitTable ~= nil then
+			local bearing = ewr.bearing(unit:getPoint(), unitTable.point)
+			local altitude = unitTable.point.y
+			local distance = ewr.distance2(unit:getPoint(), unitTable.point)
+			local direction = bearing - unitTable.heading
+			local dir = ewr.directionDefines(direction)
+			output = output ..
+				unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type) ..
+				"\n"
+			counter = counter + 1
+		end
 	end
 
 	trigger.action.outTextForUnit(unit:getID(), output, 15, true)
@@ -490,7 +501,7 @@ function ewr.bomber_picture(unitName)
 			local direction = bearing - unitTable.heading
 			local dir = ewr.directionDefines(direction)
 			output = output ..
-				unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type)..
+				unitConversionOutput(unitName, bearing, distance, altitude, dir, unitTable.type) ..
 				"\n"
 			counter = counter + 1
 		end
@@ -589,7 +600,7 @@ function ewr.loop(args, time)
 	ewr.detectedUnits.red  = ewr.compileDetectedUnits(ewr.EWRs.red, coalition.side.BLUE)
 	ewr.detectedUnits.blue = ewr.compileDetectedUnits(ewr.EWRs.blue, coalition.side.RED)
 
-	ewr.lastUpdateTime = timer.getTime()
+	ewr.lastUpdateTime     = timer.getTime()
 
 	for unitName, isOn in next, ewr.autoDisplay do
 		if isOn then
