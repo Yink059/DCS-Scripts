@@ -243,7 +243,6 @@ function ewr.compileDetectedUnits(ewrList, coa)
 							unitTable["playerName"] = aircraft:getPlayerName()
 							unitTable["unit"] = aircraft
 							unitTable["type"] = aircraft:getTypeName()
-							detectedUnitList[unitTable["name"]] = unitTable
 							table.insert(detectedUnitList, unitTable)
 						end
 					end
