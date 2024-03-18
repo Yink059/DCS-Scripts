@@ -52,9 +52,15 @@ local function distanceVec3(vec1, vec2) --use z instead of y for getPoint()
 	return math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2 + (z2 - z1) ^ 2)
 end
 
-if ewr == nil then
-	ewr = {}
-end
+ewr = {}
+
+ewr.spawnTypeName	= "1L13 EWR"
+ewr.types		= {"55G6 EWR", "1L13 EWR","E-3A","E-2C","A-50","FPS-117"}
+ewr.refreshTime 	= 25
+ewr.pictureLimit 	= 5
+ewr.closeTargetRadius 	= 10000 --meters for god sight
+ewr.debugging 		= false
+ewr.maxDetectionRange	= 400000
 
 ewr.hasCommands        = {}
 ewr.EWRs               = {}
@@ -67,10 +73,6 @@ ewr.detectedUnits.red  = {}
 ewr.detectedUnits.blue = {}
 ewr.lastUpdateTime     = 0
 
-if ewr.types == nil then
-	ewr.types = {}
-	--table.insert(ewr.types, "TYPE_NAME_EXAMPLE")
-end
 
 local function heading(unitName)
 	local unit = Unit.getByName(unitName)
