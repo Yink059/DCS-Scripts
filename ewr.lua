@@ -53,7 +53,6 @@ local function distanceVec3(vec1, vec2) --use z instead of y for getPoint()
 end
 
 ewr.hasCommands        = {}
-
 ewr.EWRs               = {}
 ewr.EWRs.blue          = {}
 ewr.EWRs.red           = {}
@@ -63,6 +62,11 @@ ewr.autoDisplay        = {}
 ewr.detectedUnits.red  = {}
 ewr.detectedUnits.blue = {}
 ewr.lastUpdateTime     = 0
+
+if ewr.types == nil then
+	ewr.types = {}
+	--table.insert(ewr.types, "TYPE_NAME_EXAMPLE")
+end
 
 local function heading(unitName)
 	local unit = Unit.getByName(unitName)
