@@ -52,6 +52,10 @@ local function distanceVec3(vec1, vec2) --use z instead of y for getPoint()
 	return math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2 + (z2 - z1) ^ 2)
 end
 
+if ewr == nil then
+	ewr = {}
+end
+
 ewr.hasCommands        = {}
 ewr.EWRs               = {}
 ewr.EWRs.blue          = {}
