@@ -21,6 +21,7 @@ function database.openDatabase(filepath, config_path)
             net.json2lua([[
                 {
                     "reset_time" : 43200,
+                    "update_time" : 10,
                     "starting_lives": 6,
                     "airframe_cost" : {
                         "example_type_name" : 1
@@ -250,15 +251,14 @@ function db:loadAllGroups()
     end
 end
 
-function db:startUpdateLoop(start_time, update_time)
-    if self.continue == true then
+function db:startUpdateLoop(start_time)
         local function update(self, time)
+            if self.continue == false then return nil end
             self:saveAllGroups()
             self:auditLifeTimer()
-            return time + update_time
+            return time + self.update_time
         end
         timer.scheduleFunction(update, self, timer.getTime() + start_time)
-    end
 end
 
 function db:startUpdateHooks()
