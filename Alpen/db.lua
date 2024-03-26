@@ -22,8 +22,13 @@ function database.openDatabase(filepath, config_path)
                 {
                     "reset_time" : 43200,
                     "starting_lives": 6,
-                    "helicopter_cost" : 1,
-                    "jet_cost" : 2
+                    "airframe_cost" : {
+                        "example_type_name" : 1
+                    },
+                    "default_cost" : {
+                        "plane" : 2,
+                        "helicopter" : 1
+                    }
                 }
                 ]])
     end
@@ -45,6 +50,7 @@ function database.openDatabase(filepath, config_path)
     file:close()
     local f = io.open(filepath, "r")
     instance.filepath = filepath
+    instance.config_filepath = config_path
     instance.db = net.json2lua(f:read("*all"))
     instance.config = config
     f:close()
@@ -85,6 +91,39 @@ function db:update()
     self.db.objectives = current.objectives
 end
 
+function db:readConfig()
+    local file = io.open(self.config_filepath, "r")
+    local s = "{}"
+    if file then
+        s = file:read("*all")
+        file:close()
+    end
+    self.config = net.json2lua(s)
+    return self.config
+end
+
+function db:writeConfig()
+    local file = io.open(self.config_filepath, "w")
+    if file then
+        file:write(net.lua2json(self.config))
+        file:close()
+        return true
+    end
+    return false
+end
+
+function db:setConfigLivesResetTimer(time)
+    self:readConfig()
+    self.config.reset_time = time
+    self:writeConfig()
+end
+
+function db:setConfigStartingLives(amt)
+    self:readConfig()
+    self.config.starting_lives = amt
+    self:writeConfig()
+end
+
 function db:setMissionName(name)
     self:read()
     self.db.missionName = name
@@ -119,8 +158,12 @@ end
 function db:updatePlayers()
 end
 
-function db:getCategoryCost(category)
-    return self.config.lives_cost[category]
+function db:getCost(type_name, category)
+    if self.config.airframe_cost[type_name] ~= nil then
+        return self.config.airframe_cost[type_name]
+    else
+        return self.config.default_cost[category]
+    end
 end
 
 function db:getLives(ucid)
@@ -141,7 +184,7 @@ function db:resetLives()
     end
     self.db.reset = os.time()
     self:write()
-    log.write("Lives Reset", log.INFO, "Lives reset at " .. tostring(self.db.reset))
+    log.write("Lives Reset", log.INFO, "Lives were reset at " .. tostring(self.db.reset))
     trigger.action.outText("Lives Reset!", 25)
 end
 
@@ -155,6 +198,9 @@ function db:auditLifeTimer()
 end
 
 function db:resetPlayerLives(ucid)
+    self:read()
+    self.db.players[ucid].lives = self.config["starting_lives"]
+    self:write()
 end
 
 function db:saveGroup(g)
