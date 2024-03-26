@@ -54,11 +54,14 @@ function database.openDatabase(filepath, config_path)
     instance.db = net.json2lua(f:read("*all"))
     instance.config = config
     f:close()
+    instance.continue = true
     return instance
 end
 
 function db:reset()
     --delete file to reset
+    self.continue = false
+    os.remove(self.filepath)
 end
 
 function db:write()
@@ -223,7 +226,7 @@ function db:saveGroup(g)
 end
 
 function db:loadGroup(group)
-    coalition.addGroup(group.country, group.category , group )
+    coalition.addGroup(group.country, group.category, group)
 end
 
 function db:saveAllGroups()
@@ -248,12 +251,14 @@ function db:loadAllGroups()
 end
 
 function db:startUpdateLoop(start_time, update_time)
-    local function update(self, time)
-        self:saveAllGroups()
-        self:auditLifeTimer()
-        return time + update_time
+    if self.continue == true then
+        local function update(self, time)
+            self:saveAllGroups()
+            self:auditLifeTimer()
+            return time + update_time
+        end
+        timer.scheduleFunction(update, self, timer.getTime() + start_time)
     end
-    timer.scheduleFunction(update, self, timer.getTime() + start_time)
 end
 
 function db:startUpdateHooks()
