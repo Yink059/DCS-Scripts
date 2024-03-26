@@ -1,7 +1,10 @@
 {
     "reset_time" : 43200,
     "starting_lives": 6,
-    "lives_cost" : {
+    "airframe_cost" : {
+        "example_type_name" : 1
+    },
+    "default_cost" : {
         "plane" : 2,
         "helicopter" : 1
     }
