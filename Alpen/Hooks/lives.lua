@@ -35,10 +35,11 @@ end
 function lives.onPlayerTryChangeSlot(pid, coa, sid)
     lives_db:read()
     local lives = lives_db:getLives(getUcid(pid))
+    local type_name = DCS.getUnitProperty(sid, DCS.UNIT_TYPE)
     local category = DCS.getUnitProperty(sid, DCS.UNIT_GROUPCATEGORY)
-    local cost = lives_db:getCategoryCost(tostring(category))
+    local cost = lives_db:getCost(tostring(type_name),tostring(category))
 
-    net.send_chat_to("cost of ".. tostring(category) .. " is "  .. tostring(cost), pid)
+    net.send_chat_to("cost of ".. tostring(type_name) .. " is "  .. tostring(cost), pid)
     net.send_chat_to("Lives remaining: ".. tostring(lives), pid)
     if cost <= lives then
         net.send_chat_to("Slotted!", pid)
