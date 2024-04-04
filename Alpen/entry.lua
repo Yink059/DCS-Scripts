@@ -22,4 +22,4 @@ else
     unit_db:setInit(false)
 end
 
-unit_db:startUpdateLoop(1, 10)
+unit_db:startUpdateLoop(1)

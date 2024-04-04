@@ -214,6 +214,7 @@ function db:saveGroup(g)
     group.task = "Ground Nothing"
     group.units = {}
     group.category = g:getCategory()
+    group.lateActivation = true
     for i, unit in next, g:getUnits() do
         group.units[i] = {}
         group.units[i].name = unit:getName()
@@ -221,6 +222,9 @@ function db:saveGroup(g)
         group.units[i].y = unit:getPoint().z
         group.units[i].type = unit:getTypeName()
         group.country = unit:getCountry()
+        if unit:isActive() then
+            group.lateActivation = false
+        end
     end
 
     table.insert(self.db.units[group.coa], group)
@@ -256,7 +260,7 @@ function db:startUpdateLoop(start_time)
             if self.continue == false then return nil end
             self:saveAllGroups()
             self:auditLifeTimer()
-            return time + self.update_time
+            return time + self.config.update_time
         end
         timer.scheduleFunction(update, self, timer.getTime() + start_time)
 end

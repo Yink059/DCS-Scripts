@@ -175,9 +175,10 @@ ctld.JTAC_laseSpotCorrections = false -- if true, the JTAC will attempt to lead 
 -- Flag Number - Optional last field. If set the current number of groups remaining can be obtained from the flag value
 
 -- pickupZones = { "Zone name or Ship Unit Name", "smoke color", "limit (-1 unlimited)", "ACTIVE (yes/no)", "side (0 = Both sides / 1 = Red / 2 = Blue )", flag number (optional) }
+
 ctld.pickupZones = {
-    { "Tabqa",       "none", -1, "yes", 1 },
-    { "Gaziantep",   "none", -1, "yes", 1 },
+    { "Tabqa",       "none", -1, "yes", 0 },
+    { "Gaziantep",   "none", -1, "yes", 0 },
 
 
     { "USA Carrier", "blue", 10, "yes", 0, 1001 }, -- instead of a Zone Name you can also use the UNIT NAME of a ship
@@ -317,6 +318,8 @@ ctld.unitLoadLimits = {
     -- ["SA342Mistral"] = 4,
     -- ["SA342L"] = 4,
     -- ["SA342M"] = 4,
+    ["Mi-8MT"]       = 12,
+    ["Mi-8MTV2"]     = 12
 
 }
 
@@ -389,7 +392,7 @@ ctld.loadableGroupsByType                 = {}
 
 --ctld.loadableGroupsByType["type name"]       = { "Standard Group", "Anti Tank", "Mortar Squad" } --example
 
-ctld.loadableGroupsByType["Mi-24P"]       = {}
+ctld.loadableGroupsByType["Mi-24P"]       = {"Single JTAC", "JTAC Group"}
 ctld.loadableGroupsByType["UH-1H"]        = {}
 ctld.loadableGroupsByType["Mi-8MT"]       = {"Single JTAC", "Standard Group", "Mortar Squad"}
 ctld.loadableGroupsByType["Mi-8MTV2"]     = {"Single JTAC", "Standard Group", "Mortar Squad"}
