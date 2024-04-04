@@ -2,8 +2,9 @@ local db, database = dofile(lfs.writedir() .. "Alpen/db.lua")
 local pw = "floggerz"
 local test_filepath = lfs.writedir() .. "Alpen/db.json"
 local config_filepath = lfs.writedir() .. "Alpen/config.json"
-local lives_db = database.openDatabase(test_filepath, config_filepath)
 local lives = {}
+local lives_db
+
 
 local gameMasters = {
     ["025ee29567ec00061db890812f4b8ec5"] = true, -- yink
@@ -30,6 +31,10 @@ end
 
 local function getUcid(pid)
     return net.get_player_info(pid, 'ucid')
+end
+
+function lives.onMissionLoadBegin()
+    lives_db = database.openDatabase(test_filepath, config_filepath)
 end
 
 function lives.onPlayerTryChangeSlot(pid, coa, sid)
