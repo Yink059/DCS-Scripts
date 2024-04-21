@@ -23,3 +23,4 @@ else
 end
 
 unit_db:startUpdateLoop(1)
+unit_db:addEventHandlers()

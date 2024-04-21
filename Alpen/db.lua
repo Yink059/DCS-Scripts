@@ -1,6 +1,16 @@
 local db = {}
 local database = {}
 
+local function distanceVec3(vec1, vec2) --use z instead of y for getPoint()
+    local x1 = vec1.x
+    local y1 = vec1.z
+    local z1 = vec1.y
+    local x2 = vec2.x
+    local y2 = vec2.z
+    local z2 = vec2.y
+
+    return math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2 + (z2 - z1) ^ 2)
+end
 
 function db:new(t)
     t = t or {}
@@ -21,7 +31,7 @@ function database.openDatabase(filepath, config_path)
             net.json2lua([[
                 {
                     "reset_time" : 43200,
-                    "update_time" : 10,
+                    "update_time" : 1,
                     "starting_lives": 6,
                     "airframe_cost" : {
                         "example_type_name" : 1
@@ -29,7 +39,8 @@ function database.openDatabase(filepath, config_path)
                     "default_cost" : {
                         "plane" : 2,
                         "helicopter" : 1
-                    }
+                    },
+                    "life_return_radius" : 3
                 }
                 ]])
     end
@@ -54,9 +65,79 @@ function database.openDatabase(filepath, config_path)
     instance.config_filepath = config_path
     instance.db = net.json2lua(f:read("*all"))
     instance.config = config
+    instance.activeAircraft = {}
+    instance.lastLanded = {}
     f:close()
     instance.continue = true
     return instance
+end
+
+function db:checkLanded(coaAircraft)
+    local landedAc = {}
+    local airborneAc = {}
+
+    for _, v in next, coaAircraft do
+        for _, g in next, v do
+            local units = g:getUnits()
+            if #units > 0 then
+                for _, u in next, units do
+                    if u ~= nil then
+                        if u:isExist() then
+                            if u:getPlayerName() ~= nil then
+                                if not u:inAir() then
+                                    landedAc[u:getName()] = u
+                                elseif u:inAir() then
+                                    airborneAc[u:getName()] = u
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return landedAc, airborneAc
+end
+
+function db:getUCIDFromName(player_name)
+    local players = net.get_player_list()
+    for pid, playerName in next, players do
+        if net.get_player_info(pid, "name") == player_name then
+            return net.get_player_info(pid, "ucid")
+        end
+    end
+    return nil
+end
+
+function db:checkStatus()
+    local landedNearby = {}
+    local landed = {}
+    local airborne = {}
+
+    for c = 1, 2 do
+        local airbases = coalition.getAirbases(c)
+        local airplanes = coalition.getGroups(c, Group.Category.AIRPLANE)
+        local helis = coalition.getGroups(c, Group.Category.HELICOPTER)
+        landed[c], airborne[c] = self:checkLanded({ airplanes, helis })
+
+        for unitName, unitObject in next, landed[c] do
+            for _, airbase in next, airbases do
+                local dist = distanceVec3(unitObject:getPoint(), airbase:getPoint())
+
+                if dist <= self.config.life_return_radius and airbase:getCoalition() == unitObject:getCoalition() then
+                    landedNearby[unitName] = airbase:getName()
+                    self.lastLanded[unitName] = airbase:getName()
+                    break
+                end
+            end
+        end
+    end
+    return landedNearby, landed, airborne
+end
+
+function db:setConfigFromLuaTable(t)
+    self.config = t
 end
 
 function db:reset()
@@ -181,6 +262,12 @@ function db:subtractLife(ucid, amt)
     self:write()
 end
 
+function db:addLife(ucid, amt)
+    self:read()
+    self.db.players[ucid].lives = self.db.players[ucid].lives + amt
+    self:write()
+end
+
 function db:resetLives()
     self:read()
     for ucid, playerTable in next, self.db.players do
@@ -255,14 +342,109 @@ function db:loadAllGroups()
     end
 end
 
-function db:startUpdateLoop(start_time)
-        local function update(self, time)
-            if self.continue == false then return nil end
-            self:saveAllGroups()
-            self:auditLifeTimer()
-            return time + self.config.update_time
+function db:lifeLoop()
+    local landedNearby, landed, airborne = self:checkStatus()
+
+    for coa, coaTable in next, airborne do
+        for unitName, unitObject in next, coaTable do
+            if unitObject ~= nil then
+                if unitObject:isExist() then
+                    if self.activeAircraft[unitName] ~= true then
+                        self.activeAircraft[unitName] = true
+                        local playerName = unitObject:getPlayerName()
+                        if playerName == nil then return end
+                        local lastAirfield = self.lastLanded[unitName]
+                        local type_name = unitObject:getTypeName()
+                        local category = unitObject:getDesc().category
+                        local cost = self:getCost(tostring(type_name), tostring(category))
+
+                        trigger.action.outText(tostring(type_name) .. " " .. tostring(category) .. " " .. tostring(cost), 15)
+
+
+                        local ucid = self:getUCIDFromName(playerName)
+                        landedNearby[unitName] = nil
+                        self:subtractLife(ucid, cost)
+
+                        trigger.action.outTextForUnit(unitObject:getID(),
+                            "You have taken off from " .. lastAirfield .. ".",
+                            15)
+                        trigger.action.outTextForUnit(unitObject:getID(),
+                            type_name ..
+                            " Cost: " .. tostring(cost) .. " | Lives Left: " .. tostring(self:getLives(ucid)),
+                            15)
+                    end
+                end
+            end
         end
-        timer.scheduleFunction(update, self, timer.getTime() + start_time)
+    end
+
+    for coa, coaTable in next, landed do
+        for unitName, unitObject in next, coaTable do
+            if unitObject ~= nil then
+                if unitObject:isExist() then
+                    if self.activeAircraft[unitName] ~= false and landedNearby[unitName] ~= nil then
+                        self.activeAircraft[unitName] = false
+                        local playerName = unitObject:getPlayerName()
+                        if playerName == nil then return end
+                        local lastAirfield = landedNearby[unitName]
+                        local type_name = unitObject:getTypeName()
+                        local category = unitObject:getDesc().category
+                        local cost = self:getCost(tostring(type_name), tostring(category))
+                        local ucid = self:getUCIDFromName(playerName)
+
+                        self:addLife(ucid, cost)
+
+                        trigger.action.outTextForUnit(unitObject:getID(),
+                            "You have landed at " .. landedNearby[unitName] .. ".",
+                            15)
+                        trigger.action.outTextForUnit(unitObject:getID(),
+                            type_name ..
+                            " Cost: " .. tostring(cost) .. " | Lives Total: " .. tostring(self:getLives(ucid)),
+                            15)
+                    end
+                end
+            end
+        end
+    end
+end
+
+function db:addEventHandlers()
+    local eh = {}
+
+    local enumFunctions = {}
+
+    local function birth(event)
+        if event.initiator ~= nil then
+            if event.initiator:getPlayerName() ~= nil then
+                self.activeAircraft[event.initiator:getName()] = false
+            end
+        end
+    end
+
+    enumFunctions["S_EVENT_BIRTH"] = birth
+
+    function eh:onEvent(event)
+        for enum, func in next, enumFunctions do
+            if event.id == world.event[enum] then
+                func(event)
+                return nil
+            end
+        end
+    end
+
+    trigger.action.outText("Added Event Handlers!", 15)
+    self.EventHandler = world.addEventHandler(eh)
+end
+
+function db:startUpdateLoop(start_time)
+    local function update(self, time)
+        if self.continue == false then return nil end
+        self:saveAllGroups()
+        self:auditLifeTimer()
+        self:lifeLoop()
+        return time + self.config.update_time
+    end
+    timer.scheduleFunction(update, self, timer.getTime() + start_time)
 end
 
 function db:startUpdateHooks()
