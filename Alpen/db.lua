@@ -31,16 +31,19 @@ function database.openDatabase(filepath, config_path)
             net.json2lua([[
                 {
                     "reset_time" : 43200,
-                    "update_time" : 1,
+                    "next_mission_flag" : 13579,
+                    "update_time" : 5,
                     "starting_lives": 6,
                     "airframe_cost" : {
                         "example_type_name" : 1
                     },
                     "default_cost" : {
                         "plane" : 2,
-                        "helicopter" : 1
+                        "helicopter" : 1,
+                        "0" : 2,
+                        "1" : 1
                     },
-                    "life_return_radius" : 3
+                    "life_return_radius" : 3000
                 }
                 ]])
     end
@@ -147,6 +150,7 @@ function db:reset()
 end
 
 function db:write()
+    if not self.continue then return false end
     local file = io.open(self.filepath, "w")
     if file then
         file:write(net.lua2json(self.db))
@@ -157,6 +161,7 @@ function db:write()
 end
 
 function db:read()
+    if not self.continue then return false end
     local file = io.open(self.filepath, "r")
     local s = "{}"
     if file then
@@ -358,7 +363,8 @@ function db:lifeLoop()
                         local category = unitObject:getDesc().category
                         local cost = self:getCost(tostring(type_name), tostring(category))
 
-                        trigger.action.outText(tostring(type_name) .. " " .. tostring(category) .. " " .. tostring(cost), 15)
+                        trigger.action.outText(tostring(type_name) .. " " .. tostring(category) .. " " .. tostring(cost),
+                            15)
 
 
                         local ucid = self:getUCIDFromName(playerName)
@@ -438,6 +444,11 @@ end
 
 function db:startUpdateLoop(start_time)
     local function update(self, time)
+
+        if trigger.action.getUserFlag(self.config["next_mission_flag"]) == true then
+            self:reset()
+        end
+
         if self.continue == false then return nil end
         self:saveAllGroups()
         self:auditLifeTimer()
