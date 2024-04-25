@@ -1,5 +1,6 @@
 {
     "reset_time" : 43200,
+    "next_mission_flag" : 13579,
     "update_time" : 5,
     "starting_lives": 6,
     "airframe_cost" : {
