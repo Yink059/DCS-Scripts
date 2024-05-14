@@ -444,8 +444,7 @@ end
 
 function db:startUpdateLoop(start_time)
     local function update(self, time)
-
-        if trigger.action.getUserFlag(self.config["next_mission_flag"]) == true then
+        if trigger.misc.getUserFlag(self.config["next_mission_flag"]) == true then
             self:reset()
         end
 
