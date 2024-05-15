@@ -12,6 +12,16 @@ local function distanceVec3(vec1, vec2) --use z instead of y for getPoint()
     return math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2 + (z2 - z1) ^ 2)
 end
 
+local function getHeading(unit)
+
+	local unitPos = unit:getPosition()
+	local headingRad = math.atan2( unitPos.x.z, unitPos.x.x )
+ 
+	if headingRad < 0 then headingRad = headingRad + 2 * math.pi end
+
+	return headingRad * 180 / math.pi
+end
+
 function db:new(t)
     t = t or {}
     setmetatable(t, self)
@@ -287,9 +297,12 @@ end
 function db:auditLifeTimer()
     self:read()
     local time = os.time()
-    local reset_time = self.config.reset_time
-    if time - reset_time > self.db.reset then
+    local reset_remaining = self.db.reset - self.config.update_time
+    if reset_remaining < 0 then
         self:resetLives()
+    else
+        self.db.reset = reset_remaining
+        self:write()
     end
 end
 
@@ -312,6 +325,7 @@ function db:saveGroup(g)
         group.units[i].name = unit:getName()
         group.units[i].x = unit:getPoint().x
         group.units[i].y = unit:getPoint().z
+        group.units[i].heading = getHeading(unit)
         group.units[i].type = unit:getTypeName()
         group.country = unit:getCountry()
         if unit:isActive() then
