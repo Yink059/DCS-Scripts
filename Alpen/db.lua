@@ -13,13 +13,12 @@ local function distanceVec3(vec1, vec2) --use z instead of y for getPoint()
 end
 
 local function getHeading(unit)
+    local unitPos = unit:getPosition()
+    local headingRad = math.atan2(unitPos.x.z, unitPos.x.x)
 
-	local unitPos = unit:getPosition()
-	local headingRad = math.atan2( unitPos.x.z, unitPos.x.x )
- 
-	if headingRad < 0 then headingRad = headingRad + 2 * math.pi end
+    if headingRad < 0 then headingRad = headingRad + 2 * math.pi end
 
-	return headingRad * 180 / math.pi
+    return headingRad * 180 / math.pi
 end
 
 function db:new(t)
@@ -36,6 +35,7 @@ function database.openDatabase(filepath, config_path)
     local config_file, config = io.open(config_path, "r"), {}
     if config_file then
         config = net.json2lua(config_file:read("*all"))
+        config_file:close()
     else
         config =
             net.json2lua([[
@@ -57,14 +57,15 @@ function database.openDatabase(filepath, config_path)
                 }
                 ]])
     end
-    config_file:close()
+
+    local json = { players = {}, units = {}, objectives = {}, reset = -1, missionName = "" }
     local file = io.open(filepath, "r")
     if file then
         file:close()
     else
         file = io.open(filepath, "w")
         if file then
-            local json = { players = {}, units = {}, objectives = {}, reset = os.time(), missionName = "" }
+            json.reset = config.reset_time
             json.units[1] = {}
             json.units[2] = {}
             json.init = true
@@ -288,7 +289,7 @@ function db:resetLives()
     for ucid, playerTable in next, self.db.players do
         self.db.players[ucid].lives = self.config["starting_lives"]
     end
-    self.db.reset = os.time()
+    self.db.reset = self.config.reset_time
     self:write()
     log.write("Lives Reset", log.INFO, "Lives were reset at " .. tostring(self.db.reset))
     trigger.action.outText("Lives Reset!", 25)
@@ -296,7 +297,11 @@ end
 
 function db:auditLifeTimer()
     self:read()
-    local time = os.time()
+
+    if self.db.reset > self.config.reset_time then
+        self.db.reset = self.config.reset_time
+    end
+
     local reset_remaining = self.db.reset - self.config.update_time
     if reset_remaining < 0 then
         self:resetLives()
@@ -376,10 +381,6 @@ function db:lifeLoop()
                         local type_name = unitObject:getTypeName()
                         local category = unitObject:getDesc().category
                         local cost = self:getCost(tostring(type_name), tostring(category))
-
-                        trigger.action.outText(tostring(type_name) .. " " .. tostring(category) .. " " .. tostring(cost),
-                            15)
-
 
                         local ucid = self:getUCIDFromName(playerName)
                         landedNearby[unitName] = nil
