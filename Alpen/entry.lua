@@ -1,7 +1,5 @@
 local test_filepath = lfs.writedir() .. "Alpen/db.json"
 local config_filepath = lfs.writedir() .. "Alpen/config.json"
-local ctld_filepath = lfs.writedir() .. "Alpen/CTLD.lua"
-local mist_filepath = lfs.writedir() .. "Alpen/mist_4_5_122.lua"
 
 local db, database = dofile(lfs.writedir() .. "Alpen/db.lua")
 

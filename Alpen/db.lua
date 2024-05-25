@@ -242,6 +242,8 @@ function db:addPlayer(ucid, side)
         local player = {}
         player.side = side
         player.lives = self.config.starting_lives
+        player.reset = self.config.reset_time
+        player.switch = self.config.switch_count
         self.db.players[ucid] = player
         self:write()
         return true
@@ -272,6 +274,22 @@ function db:getLives(ucid)
     return self.db.players[ucid].lives
 end
 
+function db:trySwitch(ucid)
+    self:read()
+    if self.db.players[ucid].switch > 0 and self.db.players[ucid].side ~= 0 then
+        if self.db.players[ucid].side == 1 then
+            self.db.players[ucid].side = 2
+        elseif self.db.players[ucid].side == 2 then
+            self.db.players[ucid].side = 1
+        end
+        self.db.players[ucid].switch = self.db.players[ucid].switch - 1
+        return true
+    else
+        self.db.players[ucid].switch = 0
+    end
+    return false
+end
+
 function db:subtractLife(ucid, amt)
     self:read()
     self.db.players[ucid].lives = self.db.players[ucid].lives - amt
@@ -284,37 +302,40 @@ function db:addLife(ucid, amt)
     self:write()
 end
 
-function db:resetLives()
+function db:resetAllLives()
     self:read()
     for ucid, playerTable in next, self.db.players do
         self.db.players[ucid].lives = self.config["starting_lives"]
+        self.db.players[ucid].reset = self.config.reset_time
     end
-    self.db.reset = self.config.reset_time
     self:write()
     log.write("Lives Reset", log.INFO, "Lives were reset at " .. tostring(self.db.reset))
-    trigger.action.outText("Lives Reset!", 25)
+    trigger.action.outText("All Lives Reset!", 25, false)
+end
+
+function db:resetPlayerLives(ucid)
+    self:read()
+
+    self.db.players[ucid].lives = self.config["starting_lives"]
+    self.db.players[ucid].switch = self.config.switch_count
+    self.db.players[ucid].reset = self.config.reset_time
+    
+    self:write()
+    log.write("Player Lives Reset", log.INFO, tostring(ucid) .. " lives were reset at " .. tostring(self.db.reset))
 end
 
 function db:auditLifeTimer()
     self:read()
 
-    if self.db.reset > self.config.reset_time then
-        self.db.reset = self.config.reset_time
+    for ucid, playerTable in next, self.db.players do
+        local reset_remaining = self.db.players[ucid].reset - self.config.update_time
+        if reset_remaining < 0 then
+            self:resetPlayerLives(ucid)
+        else
+            self.db.players[ucid].reset = reset_remaining
+            self:write()
+        end
     end
-
-    local reset_remaining = self.db.reset - self.config.update_time
-    if reset_remaining < 0 then
-        self:resetLives()
-    else
-        self.db.reset = reset_remaining
-        self:write()
-    end
-end
-
-function db:resetPlayerLives(ucid)
-    self:read()
-    self.db.players[ucid].lives = self.config["starting_lives"]
-    self:write()
 end
 
 function db:saveGroup(g)
@@ -459,7 +480,7 @@ end
 
 function db:startUpdateLoop(start_time)
     local function update(self, time)
-        if trigger.misc.getUserFlag(self.config["next_mission_flag"]) == true then
+        if trigger.misc.getUserFlag(self.config.next_mission_flag) == true then
             self:reset()
         end
 
