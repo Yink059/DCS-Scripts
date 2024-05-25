@@ -10,6 +10,15 @@ local gameMasters = {
     ["025ee29567ec00061db890812f4b8ec5"] = true, -- yink
 }
 
+local function formatTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+
+    return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+
+
 local function split(pString, pPattern) --string.split
     local Table = {}
     local fpat = "(.-)" .. pPattern
@@ -40,12 +49,14 @@ end
 function lives.onPlayerTryChangeSlot(pid, coa, sid)
     lives_db:read()
     local lives = lives_db:getLives(getUcid(pid))
+    local time_left = lives_db:getResetRemaining(getUcid(pid))
     local type_name = DCS.getUnitProperty(sid, DCS.UNIT_TYPE)
     local category = DCS.getUnitProperty(sid, DCS.UNIT_GROUPCATEGORY)
     local cost = lives_db:getCost(tostring(type_name),tostring(category))
 
     net.send_chat_to("cost of ".. tostring(type_name) .. " is "  .. tostring(cost), pid)
     net.send_chat_to("Lives remaining: ".. tostring(lives), pid)
+    net.send_chat_to("Time to reset: ".. formatTime(math.floor(time_left)), pid)
     if cost <= lives then
         net.send_chat_to("Slotted!", pid)
         return
