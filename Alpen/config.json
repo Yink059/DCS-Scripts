@@ -1,7 +1,7 @@
 {
-    "reset_time" : 43200,
+    "reset_time" : 43200.0,
     "next_mission_flag" : 13579,
-    "update_time" : 5,
+    "update_time" : 5.0,
     "starting_lives": 6,
     "airframe_cost" : {
         "example_type_name" : 1
@@ -12,5 +12,6 @@
         "0" : 2,
         "1" : 1
     },
-    "life_return_radius" : 3000
+    "life_return_radius" : 3000,
+    "switch_count" : 1
 }
