@@ -274,6 +274,11 @@ function db:getLives(ucid)
     return self.db.players[ucid].lives
 end
 
+function db:getResetRemaining(ucid)
+    self:read()
+    return self.db.players[ucid].reset
+end
+
 function db:trySwitch(ucid)
     self:read()
     if self.db.players[ucid].switch > 0 and self.db.players[ucid].side ~= 0 then
