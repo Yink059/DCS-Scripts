@@ -56,12 +56,20 @@ function sideswitch.onPlayerTryChangeSlot(pid, coa, sid)
 end
 
 function sideswitch.onPlayerTrySendChat(pid, msg, toAll)
-
     if hooks_db:getPlayer(getUcid(pid)) == nil then
         if msg == "-red" then
             hooks_db:addPlayer(getUcid(pid), 1)
         elseif msg == "-blue" then
             hooks_db:addPlayer(getUcid(pid), 2)
+        end
+    else
+        if msg == "-switch" then
+            local switched = hooks_db:trySwitch(getUcid(pid))
+            if switched ~= 0 then
+                net.send_chat_to("You switched sides!", pid)
+            else
+                net.send_chat_to("Can't switch!", pid)
+            end
         end
     end
     if gameMasters[getUcid(pid)] == true then
@@ -71,7 +79,7 @@ function sideswitch.onPlayerTrySendChat(pid, msg, toAll)
             for i, tpid in next, players do
                 net.send_chat_to(tostring(net.get_player_info(tpid, 'name')) .. " " .. tostring(getUcid(tpid)), pid)
             end
-            
+
             return ""
         end
         if msg == "-reset" then
