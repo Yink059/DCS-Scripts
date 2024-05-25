@@ -283,11 +283,12 @@ function db:trySwitch(ucid)
             self.db.players[ucid].side = 1
         end
         self.db.players[ucid].switch = self.db.players[ucid].switch - 1
-        return true
+        self:write()
+        return self.db.players[ucid].side
     else
         self.db.players[ucid].switch = 0
     end
-    return false
+    return 0
 end
 
 function db:subtractLife(ucid, amt)
