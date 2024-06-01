@@ -249,7 +249,8 @@ function db:addPlayer(ucid, side)
         self:write()
         return true
     else
-        return false
+        self.db.players[ucid].side = side
+        return true
     end
 end
 
