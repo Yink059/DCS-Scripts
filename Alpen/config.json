@@ -1,5 +1,6 @@
 {
     "reset_time" : 43200.0,
+    "side_reset_time" : 43200.0,
     "next_mission_flag" : 13579,
     "update_time" : 5.0,
     "starting_lives": 6,

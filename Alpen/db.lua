@@ -243,6 +243,7 @@ function db:addPlayer(ucid, side)
         player.side = side
         player.lives = self.config.starting_lives
         player.reset = self.config.reset_time
+        player.side_reset = self.config.side_reset_time
         player.switch = self.config.switch_count
         self.db.players[ucid] = player
         self:write()
@@ -325,21 +326,39 @@ function db:resetPlayerLives(ucid)
     self.db.players[ucid].lives = self.config["starting_lives"]
     self.db.players[ucid].switch = self.config.switch_count
     self.db.players[ucid].reset = self.config.reset_time
-    
+
     self:write()
     log.write("Player Lives Reset", log.INFO, tostring(ucid) .. " lives were reset at " .. tostring(self.db.reset))
+end
+
+function db:resetPlayerLives(ucid)
+    self:read()
+
+    self.db.players[ucid].side = 0
+
+    self:write()
+    log.write("Player Side Reset", log.INFO, tostring(ucid))
 end
 
 function db:auditLifeTimer()
     self:read()
 
     for ucid, playerTable in next, self.db.players do
-        local reset_remaining = self.db.players[ucid].reset - self.config.update_time
-        if reset_remaining < 0 then
-            self:resetPlayerLives(ucid)
-        else
-            self.db.players[ucid].reset = reset_remaining
-            self:write()
+        if self.db.players[ucid].lives ~= self.config.starting_lives then
+            local reset_remaining = self.db.players[ucid].reset - self.config.update_time
+            if reset_remaining < 0 then
+                self:resetPlayerLives(ucid)
+            else
+                self.db.players[ucid].reset = reset_remaining
+                self:write()
+            end
+            local side_reset_remaining = self.db.players[ucid].side_reset - self.config.update_time
+            if side_reset_remaining < 0 then
+                self:resetPlayerSide(ucid)
+            else
+                self.db.players[ucid].side_reset = side_reset_remaining
+                self:write()
+            end
         end
     end
 end
