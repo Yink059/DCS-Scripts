@@ -264,6 +264,7 @@ function db:updatePlayers()
 end
 
 function db:getCost(type_name, category)
+log.write("getCost",log.INFO,tostring(type_name) .. " " .. tostring(category) .. " " .. tostring(self.config.airframe_cost[type_name"]) )
     if self.config.airframe_cost[type_name] ~= nil then
         return self.config.airframe_cost[type_name]
     else
