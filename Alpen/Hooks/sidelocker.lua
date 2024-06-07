@@ -59,8 +59,10 @@ function sideswitch.onPlayerTrySendChat(pid, msg, toAll)
     if hooks_db:getPlayer(getUcid(pid)) == nil or hooks_db:getPlayer(getUcid(pid)).side == 0 then
         if msg == "-red" then
             hooks_db:addPlayer(getUcid(pid), 1)
+            net.send_chat_to("You joined Red team.",pid)
         elseif msg == "-blue" then
             hooks_db:addPlayer(getUcid(pid), 2)
+            net.send_chat_to("You joined Blue team.",pid)
         end
     else
         if msg == "-switch" then
