@@ -47,6 +47,7 @@ function lives.onMissionLoadBegin()
 end
 
 function lives.onPlayerTryChangeSlot(pid, coa, sid)
+    if lives_db.db.continue == false then return end
     lives_db:read()
     local lives = lives_db:getLives(getUcid(pid))
     local time_left = lives_db:getResetRemaining(getUcid(pid))

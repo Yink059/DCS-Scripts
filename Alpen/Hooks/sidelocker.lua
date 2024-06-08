@@ -39,7 +39,7 @@ end
 
 function sideswitch.onPlayerTryChangeSlot(pid, coa, sid)
     if coa == 0 then return end
-
+    if hooks_db.db.continue == false then return end
     if hooks_db:getPlayer(getUcid(pid)) == nil or hooks_db:getPlayer(getUcid(pid)).side == 0 then
         net.send_chat_to("please type -red or -blue to pick a side!", pid)
         return false
@@ -56,13 +56,12 @@ function sideswitch.onPlayerTryChangeSlot(pid, coa, sid)
 end
 
 function sideswitch.onPlayerTrySendChat(pid, msg, toAll)
+    if hooks_db.db.continue == false then return end
     if hooks_db:getPlayer(getUcid(pid)) == nil or hooks_db:getPlayer(getUcid(pid)).side == 0 then
         if msg == "-red" then
             hooks_db:addPlayer(getUcid(pid), 1)
-            net.send_chat_to("You joined Red team.",pid)
         elseif msg == "-blue" then
             hooks_db:addPlayer(getUcid(pid), 2)
-            net.send_chat_to("You joined Blue team.",pid)
         end
     else
         if msg == "-switch" then
