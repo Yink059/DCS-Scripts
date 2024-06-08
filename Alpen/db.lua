@@ -58,13 +58,14 @@ function database.openDatabase(filepath, config_path)
                 ]])
     end
 
-    local json = { players = {}, units = {}, objectives = {}, reset = -1, missionName = "" }
+    local json = { players = {}, units = {}, objectives = {}, reset = -1, missionName = "", continue = true }
     local file = io.open(filepath, "r")
     if file then
         file:close()
     else
         file = io.open(filepath, "w")
         if file then
+            json.continue = true
             json.reset = config.reset_time
             json.units[1] = {}
             json.units[2] = {}
@@ -156,12 +157,12 @@ end
 
 function db:reset()
     --delete file to reset
-    self.continue = false
+    self.db.continue = false
     os.remove(self.filepath)
 end
 
 function db:write()
-    if not self.continue then return false end
+    if not self.db.continue then return false end
     local file = io.open(self.filepath, "w")
     if file then
         file:write(net.lua2json(self.db))
@@ -172,7 +173,7 @@ function db:write()
 end
 
 function db:read()
-    if not self.continue then return false end
+    if not self.db.continue then return false end
     local file = io.open(self.filepath, "r")
     local s = "{}"
     if file then
@@ -264,7 +265,6 @@ function db:updatePlayers()
 end
 
 function db:getCost(type_name, category)
-log.write("getCost",log.INFO,tostring(type_name) .. " " .. tostring(category) .. " " .. tostring(self.config.airframe_cost[type_name"]) )
     if self.config.airframe_cost[type_name] ~= nil then
         return self.config.airframe_cost[type_name]
     else
@@ -507,11 +507,12 @@ end
 
 function db:startUpdateLoop(start_time)
     local function update(self, time)
-        if trigger.misc.getUserFlag(self.config.next_mission_flag) == true then
+        
+        if trigger.misc.getUserFlag(self.config.next_mission_flag) == 1 then
             self:reset()
         end
 
-        if self.continue == false then return nil end
+        if self.db.continue == false then return nil end
         self:saveAllGroups()
         self:auditLifeTimer()
         self:lifeLoop()
