@@ -3,6 +3,11 @@
 
 recon = {}
 
+local util = {}
+
+util.activeAC = {}
+util.groupCommands = {}
+
 recon.pointsPerInfra = 5
 recon.pointsPerUnit = 0.25
 
@@ -175,20 +180,164 @@ recon.highFilm = 120
 --old place for aircraft definitions
 ---------------------------------------------------------------------------------------------------------------------------------reconPlane methods
 
+
+local function outText(timing, ...)
+	local s = ""
+	for i in ipairs(arg) do
+		s = s .. tostring(arg[i]) .. " "
+	end
+	trigger.action.outText(s,timing)
+end
+
+local function outTextForUnit(unit,timing, ...)
+	local s = ""
+	for i in ipairs(arg) do
+		s = s .. tostring(arg[i]) .. " "
+	end
+	if unit ~= nil then
+		trigger.action.outTextForUnit(unit:getID(), s , timing)
+	end
+end
+
+local function outTextForCoalition(coa,timing, ...)
+	local s = ""
+	for i in ipairs(arg) do
+		s = s .. tostring(arg[i]) .. " "
+	end
+	trigger.action.outTextForCoalition(coa , s , timing)
+end
+
+local function addCommandForGroup(groupID,name,path,func,args,time)
+	
+	if util.groupCommands[groupID] == nil then util.groupCommands[groupID] = {} end
+	
+	local function addCommandForGroup(input)
+		local index = missionCommands.addCommandForGroup(input[1],input[2],input[3],input[4],input[5])
+		util.groupCommands[input[6]][input[2]] = index
+	end
+	
+	timer.scheduleFunction(addCommandForGroup , {groupID,name,path,func,args,groupID} , time ) 
+end
+
+function util.log(t,...)	
+	local s = ""
+	for i in ipairs(arg) do
+		s = s .. tostring(arg[i]) .. " "
+	end
+	log.write(t, log.INFO, s)
+end
+
+local function round(num, numDecimalPlaces)
+
+	if num == 0 then return 0 end
+	
+	local mult = 10^(numDecimalPlaces or 0)
+	return math.floor(num * mult + 0.5) / mult
+end
+
+local function countList(list)
+	local c = 0
+	if list == nil then return 0 end
+	for k,v in next, list do
+		c = c + 1
+	end
+	return c
+end
+
+local function vec3ToPitch(vec3)
+	return math.deg(math.atan2(vec3.x.y, math.sqrt(vec3.x.z^2+vec3.x.x^2)))
+end
+
+local function vec3ToRoll(vec3)
+	return math.deg(math.atan2(-vec3.z.y, vec3.y.y))
+end
+
+local function vec3ToYaw(vec3)
+	return math.deg(math.atan2( vec3.x.z, vec3.x.x ))
+end
+
+local function eulerToRotationMatrix(roll,pitch,yaw)
+	--[[
+Generate a full three-dimensional rotation matrix from euler angles
+ 
+Input
+:param roll: The roll angle (radians)
+:param pitch: The pitch angle (radians)
+:param yaw: The yaw angle (radians)
+ 
+Output
+:return: A 3x3 element matix containing the rotation matrix.
+ 
+	]]--
+	
+--[[
+-                                                   -
+		|   cq*cr               sq          sr*cq           |
+		|                                                   |
+		|   -sq*cr*cp-sr*sp     cq*cp       -sq*sr*cp+sp*cr |
+		|                                                   |
+		|   sq*sp*cr-sr*cp      -sp*cq      sq*sr*sp+cr*cp  |
+		-                                                   -
+]]--
+	-- First row of the rotation matrix
+local q,p,r = roll,pitch,yaw
+	
+local x00 = math.cos(q) * math.cos(r)
+local x01 = math.sin(q)
+local x02 = math.sin(r) * math.cos(q)
+	 
+	-- Second row of the rotation matrix
+local y10 = -math.sin(q) * math.cos(r) * math.cos(p) - math.sin(r) * math.sin(p)
+local y11 = math.cos(q) * math.cos(p)
+local y12 = -math.sin(q) * math.sin(r) * math.cos(p) + math.sin(p) * math.cos(r)
+	 
+	-- Third row of the rotation matrix
+local z20 = math.sin(q) * math.sin(p) * math.cos(r) - math.sin(r) * math.cos(p)
+local z21 = -math.sin(p) * math.cos(q)
+local z22 = math.sin(q) * math.sin(r) + math.cos(r) * math.cos(p)
+	 
+	-- 3x3 rotation matrix
+local rot_matrix = {
+	x = {
+		x = x00, y = x01, z = x02
+	},
+	y = {
+		x = y10, y = y11, z = y12
+	},
+	z = {
+		x = z20, y = z21, z = z22
+	}
+}
+
+return rot_matrix
+end
+
+local function distance( unit1 , unit2) --use z instead of y for getPoint()
+	
+	local x1 = unit1:getPoint().x
+	local y1 = unit1:getPoint().z
+	local z1 = unit1:getPoint().y
+	local x2 = unit2:getPoint().x
+	local y2 = unit2:getPoint().z
+	local z2 = unit2:getPoint().y
+
+return math.sqrt( (x2-x1)^2 + (y2-y1)^2 + (z2-z1)^2)
+end
+
 function reconPlane:displayParameters()
 	local s
 	--low alt cams
 	s = "Low Alt Cameras:"
 	for index, camera in next, self.cameras.unitCameras do
 		local s = s .. string.format("\nName: %s\nPitch: %d°\nYaw: %d°\nHoriFOV: %d°\nVertFOV: %d°\nMaxDist: %dm\n",camera.name,camera.pitch,camera.yaw,camera.horizontalHalfAngleFOV * 2,camera.verticalHalfAngleFOV * 2,camera.maxDistance)
-		util.outTextForUnit(self.unit,10,s)
+		outTextForUnit(self.unit,10,s)
 	end
 	
 	--high alt cams
 	s = "High Alt Cameras:"
 	for index, camera in next, self.cameras.infraCameras do
 		local s = s .. string.format("\nName: %s\nPitch: %d°\nYaw: %d°\nHoriFOV: %d°\nVertFOV: %d°\nMaxDist: %dm\n",camera.name,camera.pitch,camera.yaw,camera.horizontalHalfAngleFOV * 2,camera.verticalHalfAngleFOV * 2,camera.maxDistance)
-		util.outTextForUnit(self.unit,10,s)
+		outTextForUnit(self.unit,10,s)
 	end
 end
 
@@ -308,12 +457,12 @@ end
 
 function reconPlane:returnFilm()
 
-	if util.activeAC[self.unitName] == true then--return if is landed at friendly base
+	if activeAC[self.unitName] == true then--return if is landed at friendly base
 		trigger.action.outTextForUnit(self.unit:getID(), "Land at a friendly base to return film." , 10)
 		return
 	end
 	
-	--util.outText(20,self.unitName,"Infra:",util.countList(self.foundInfra),"Units:",util.countList(self.foundUnits))
+	--outText(20,self.unitName,"Infra:",countList(self.foundInfra),"Units:",countList(self.foundUnits))
 	
 	trigger.action.outTextForUnit(self.unit:getID(), "Successfully returned and restocked film." , 10)
 	
@@ -321,7 +470,7 @@ function reconPlane:returnFilm()
 	local unitTargets	= self.foundUnits
 	local infraCount,unitCount = 0,0
 	
-	if util.countList(infraTargets) > 0 then
+	if countList(infraTargets) > 0 then
 		for staticName,unitDist in next, infraTargets do
 			local static = StaticObject.getByName(staticName)
 			if static ~= nil then
@@ -339,7 +488,7 @@ function reconPlane:returnFilm()
 	
 	trigger.action.outTextForCoalition(self.coa , self.unit:getPlayerName() .." has found " .. tostring(infraCount) .. " infrastructure targets with recon.", 10)
 
-	if util.countList(unitTargets) > 0 then
+	if countList(unitTargets) > 0 then
 		for k,v in next, unitTargets do
 			if v.unit ~= nil then
 				if v.unit:isExist() then
@@ -375,14 +524,14 @@ function camera:captureUnits(unit, infra)
 	
 	local pos = unit:getPosition()
 	
-	local roll = util.vec3ToRoll(pos)
-	local pitch = util.vec3ToPitch(pos)
-	local yaw = util.vec3ToYaw(pos)
+	local roll = vec3ToRoll(pos)
+	local pitch = vec3ToPitch(pos)
+	local yaw = vec3ToYaw(pos)
 	
-	--util.outText(5,self.name,infra)	
-	--util.outText(5,roll)
-	--util.outText(5,pitch)	
-	--util.outText(5,yaw)
+	--outText(5,self.name,infra)	
+	--outText(5,roll)
+	--outText(5,pitch)	
+	--outText(5,yaw)
 	
 	local orientation = {}
 	orientation.pitch = math.rad(pitch + self.pitch)
@@ -397,12 +546,12 @@ function camera:captureUnits(unit, infra)
 		orientation.yaw = -math.pi + (math.abs(orientation.yaw) - math.pi)
 	end
 	
-	local matrixVec3 = util.eulerToRotationMatrix(orientation.pitch,orientation.roll,orientation.yaw)
+	local matrixVec3 = eulerToRotationMatrix(orientation.pitch,orientation.roll,orientation.yaw)
 	matrixVec3.p = pos.p
 	
-	--util.outText(5,util.vec3ToRoll(matrixVec3))
-	--util.outText(5,util.vec3ToPitch(matrixVec3))	
-	--util.outText(5,util.vec3ToYaw(matrixVec3))
+	--outText(5,vec3ToRoll(matrixVec3))
+	--outText(5,vec3ToPitch(matrixVec3))	
+	--outText(5,vec3ToYaw(matrixVec3))
 	
 	local foundUnits = {}
 	local volP = {
@@ -419,7 +568,7 @@ function camera:captureUnits(unit, infra)
 	
 	local foundUnits, distance = {}, 0
 	local ifFound = function(foundItem, val)
-		local distanceCalc = util.distance(foundItem, unit)
+		local distanceCalc = distance(foundItem, unit)
 		foundUnits[foundItem:getName()] = {unit = foundItem, distance = distanceCalc}
 		return true
 	end
@@ -428,7 +577,7 @@ function camera:captureUnits(unit, infra)
 	if infra == true then cat = Object.Category.STATIC end
 	
 	world.searchObjects(cat, volP, ifFound)
-	--util.outText(5,"RECON DEBUG",unit:getName(),util.countList(foundUnits))
+	--outText(5,"RECON DEBUG",unit:getName(),countList(foundUnits))
 	
 	return foundUnits
 end
@@ -504,7 +653,7 @@ function recon.addMarkerUnit(unit,accuracy)
 		util.log("recon.addMarkerUnit","adding marker for",unit:getName(),"| accuracy:",accuracy)
 		local lat,lon,alt = coord.LOtoLL(newPoint)
 		local temp,pressure = atmosphere.getTemperatureAndPressure(newPoint)
-		local outString = tostring(util.round(lat,4))..", " .. tostring(util.round(lon,4)) .." | ".. tostring(util.round((29.92 * (pressure/100) / 1013.25) * 25.4,2)) .."\nTYPE: " .. typeName
+		local outString = tostring(round(lat,4))..", " .. tostring(round(lon,4)) .." | ".. tostring(round((29.92 * (pressure/100) / 1013.25) * 25.4,2)) .."\nTYPE: " .. typeName
 		trigger.action.markToCoalition(recon.redMarkCount, outString , newPoint , 1 , true)
 		recon.currentMarkers[unit:getCoalition()][unit:getName()] = recon.redMarkCount
 		recon.redMarkCount = recon.redMarkCount + 1
@@ -515,7 +664,7 @@ function recon.addMarkerUnit(unit,accuracy)
 		util.log("recon.addMarkerUnit","adding marker for",unit:getName(),"| accuracy:",accuracy)
 		local lat,lon,alt = coord.LOtoLL(newPoint)
 		local temp,pressure = atmosphere.getTemperatureAndPressure(newPoint)
-		local outString = tostring(util.round(lat,4))..", " .. tostring(util.round(lon,4)) .." | ".. tostring(util.round(pressure/100,2)) .." " .. tostring(util.round(29.92 * (pressure/100) / 1013.25,2)) .."\nTYPE: " .. typeName
+		local outString = tostring(round(lat,4))..", " .. tostring(round(lon,4)) .." | ".. tostring(round(pressure/100,2)) .." " .. tostring(round(29.92 * (pressure/100) / 1013.25,2)) .."\nTYPE: " .. typeName
 		trigger.action.markToCoalition(recon.blueMarkCount, outString , newPoint , 2 , true)
 		recon.currentMarkers[unit:getCoalition()][unit:getName()] = recon.blueMarkCount
 		recon.blueMarkCount = recon.blueMarkCount + 1
@@ -611,7 +760,7 @@ function recon.captureUnits(recon_plane)
 	
 	for index, camera in next, recon_plane.cameras.unitCameras do
 		local foundUnits = camera:captureUnits(recon_plane.unit, false)
-		--util.outText(20,"recon.captureUnits",recon_plane.unit:getName(),util.countList(foundUnits)) 
+		--outText(20,"recon.captureUnits",recon_plane.unit:getName(),countList(foundUnits)) 
 		recon_plane:filterUnitTargets(foundUnits)
 		recon_plane.lowFilm = recon_plane.lowFilm - 1
 		trigger.action.outTextForUnit(recon_plane.unit:getID(),"LOW ALT CAPTURE\nFILM LEFT: " .. tostring(recon_plane.lowFilm),10,true)
@@ -672,10 +821,10 @@ function reconEventHandler:onEvent(event)
 				
 				recon_plane = recon.createReconPlane(event.initiator:getName())
 				
-				util.addCommandForGroup(event.initiator:getGroup():getID() , "toggle Low Altitude Camera" , nil , recon.toggleLow , recon_plane , timer.getTime() + 10)
-				util.addCommandForGroup(event.initiator:getGroup():getID() , "toggle High Altitude Camera" , nil , recon.toggleHigh , recon_plane , timer.getTime() + 10)
-				util.addCommandForGroup(event.initiator:getGroup():getID() , "Return Film" , nil , recon.returnFilm , recon_plane , timer.getTime() + 10)
-				util.addCommandForGroup(event.initiator:getGroup():getID() , "Display Parameters" , nil , reconPlane.displayParameters , recon_plane , timer.getTime() + 10)
+				addCommandForGroup(event.initiator:getGroup():getID() , "toggle Low Altitude Camera" , nil , recon.toggleLow , recon_plane , timer.getTime() + 10)
+				addCommandForGroup(event.initiator:getGroup():getID() , "toggle High Altitude Camera" , nil , recon.toggleHigh , recon_plane , timer.getTime() + 10)
+				addCommandForGroup(event.initiator:getGroup():getID() , "Return Film" , nil , recon.returnFilm , recon_plane , timer.getTime() + 10)
+				addCommandForGroup(event.initiator:getGroup():getID() , "Display Parameters" , nil , reconPlane.displayParameters , recon_plane , timer.getTime() + 10)
 				
 				for camName, cameraParams in next, recon.airframes[event.initiator:getTypeName()] do
 					local newCameraParams = cameraParams
@@ -717,7 +866,7 @@ function out(_,time)
 			if string.find(k, "Infrastructure") ~= nil and string.find(k,"marker") then
 				infrastructure.markers[k]:reveal()
 			end
-			--if v.unit ~= testPlane.unit then util.outText(5,"found unit: ", k) end
+			--if v.unit ~= testPlane.unit then outText(5,"found unit: ", k) end
 		end
 	end
 	
@@ -727,163 +876,4 @@ end
 timer.scheduleFunction( out , nil , timer.getTime()+5)
 ]]--
 
-local util = {}
 
-util.activeAC = {}
-
-function util.outText(timing, ...)
-	local s = ""
-	for i in ipairs(arg) do
-		s = s .. tostring(arg[i]) .. " "
-	end
-	trigger.action.outText(s,timing)
-end
-
-function util.outTextForUnit(unit,timing, ...)
-	local s = ""
-	for i in ipairs(arg) do
-		s = s .. tostring(arg[i]) .. " "
-	end
-	if unit ~= nil then
-		trigger.action.outTextForUnit(unit:getID(), s , timing)
-	end
-end
-
-function util.outTextForCoalition(coa,timing, ...)
-	local s = ""
-	for i in ipairs(arg) do
-		s = s .. tostring(arg[i]) .. " "
-	end
-	trigger.action.outTextForCoalition(coa , s , timing)
-end
-
-
-function util.addSubMenuForGroup(groupID,path,name,time)
-	
-	if util.groupCommands[groupID] == nil then util.groupCommands[groupID] = {} end
-	
-	local function addCommandForGroup(input)
-		local table = missionCommands.addSubMenuForGroup(input[1],input[2],input[3])
-		util.groupCommands[input[1]][input[3]] = table
-	end
-	
-	timer.scheduleFunction(addCommandForGroup , {groupID,path,name} , time )
-	return 
-end
-
-function util.addCommandForGroup(groupID,name,path,func,args,time)
-	
-	if util.groupCommands[groupID] == nil then util.groupCommands[groupID] = {} end
-	
-	local function addCommandForGroup(input)
-		local index = missionCommands.addCommandForGroup(input[1],input[2],input[3],input[4],input[5])
-		util.groupCommands[input[6]][input[2]] = index
-	end
-	
-	timer.scheduleFunction(addCommandForGroup , {groupID,name,path,func,args,groupID} , time ) 
-end
-
-function util.log(t,...)	
-	local s = ""
-	for i in ipairs(arg) do
-		s = s .. tostring(arg[i]) .. " "
-	end
-	log.write(t, log.INFO, s)
-end
-
-function util.round(num, numDecimalPlaces)
-
-	if num == 0 then return 0 end
-	
-	local mult = 10^(numDecimalPlaces or 0)
-	return math.floor(num * mult + 0.5) / mult
-end
-
-function util.countList(list)
-	local c = 0
-	if list == nil then return 0 end
-	for k,v in next, list do
-		c = c + 1
-	end
-	return c
-end
-
-function util.vec3ToPitch(vec3)
-	return math.deg(math.atan2(vec3.x.y, math.sqrt(vec3.x.z^2+vec3.x.x^2)))
-end
-
-function util.vec3ToRoll(vec3)
-	return math.deg(math.atan2(-vec3.z.y, vec3.y.y))
-end
-
-function util.vec3ToYaw(vec3)
-	return math.deg(math.atan2( vec3.x.z, vec3.x.x ))
-end
-
-function util.eulerToRotationMatrix(roll,pitch,yaw)
-	--[[
-Generate a full three-dimensional rotation matrix from euler angles
- 
-Input
-:param roll: The roll angle (radians)
-:param pitch: The pitch angle (radians)
-:param yaw: The yaw angle (radians)
- 
-Output
-:return: A 3x3 element matix containing the rotation matrix.
- 
-	]]--
-	
---[[
--                                                   -
-		|   cq*cr               sq          sr*cq           |
-		|                                                   |
-		|   -sq*cr*cp-sr*sp     cq*cp       -sq*sr*cp+sp*cr |
-		|                                                   |
-		|   sq*sp*cr-sr*cp      -sp*cq      sq*sr*sp+cr*cp  |
-		-                                                   -
-]]--
-	-- First row of the rotation matrix
-local q,p,r = roll,pitch,yaw
-	
-local x00 = math.cos(q) * math.cos(r)
-local x01 = math.sin(q)
-local x02 = math.sin(r) * math.cos(q)
-	 
-	-- Second row of the rotation matrix
-local y10 = -math.sin(q) * math.cos(r) * math.cos(p) - math.sin(r) * math.sin(p)
-local y11 = math.cos(q) * math.cos(p)
-local y12 = -math.sin(q) * math.sin(r) * math.cos(p) + math.sin(p) * math.cos(r)
-	 
-	-- Third row of the rotation matrix
-local z20 = math.sin(q) * math.sin(p) * math.cos(r) - math.sin(r) * math.cos(p)
-local z21 = -math.sin(p) * math.cos(q)
-local z22 = math.sin(q) * math.sin(r) + math.cos(r) * math.cos(p)
-	 
-	-- 3x3 rotation matrix
-local rot_matrix = {
-	x = {
-		x = x00, y = x01, z = x02
-	},
-	y = {
-		x = y10, y = y11, z = y12
-	},
-	z = {
-		x = z20, y = z21, z = z22
-	}
-}
-
-return rot_matrix
-end
-
-function util.distance( unit1 , unit2) --use z instead of y for getPoint()
-	
-	local x1 = unit1:getPoint().x
-	local y1 = unit1:getPoint().z
-	local z1 = unit1:getPoint().y
-	local x2 = unit2:getPoint().x
-	local y2 = unit2:getPoint().z
-	local z2 = unit2:getPoint().y
-
-return math.sqrt( (x2-x1)^2 + (y2-y1)^2 + (z2-z1)^2)
-end
