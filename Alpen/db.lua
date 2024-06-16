@@ -422,13 +422,15 @@ function db:loadAllGroups()
         for groupName, group in next, self.db.units[i] do
             for coaName, coaTable in next, self.miz.mission.coalition do
                 for _, countryTable in next, coaTable.country do
-                    for _, groupTable in next, countryTable.vehicle.group do
-                        if groupTable.name == groupName then
-                            for _, unit in next, group.units do
-                                for _, unitTable in next, groupTable.units do
-                                    if unitTable.name == unit.name then
-                                        if unitTable.playerCanDrive == true then
-                                            unit.playerCanDrive = true
+                    if countryTable.vehicle ~= nil then
+                        for _, groupTable in next, countryTable.vehicle.group do
+                            if groupTable.name == groupName then
+                                for _, unit in next, group.units do
+                                    for _, unitTable in next, groupTable.units do
+                                        if unitTable.name == unit.name then
+                                            if unitTable.playerCanDrive == true then
+                                                unit.playerCanDrive = true
+                                            end
                                         end
                                     end
                                 end
