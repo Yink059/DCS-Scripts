@@ -28,7 +28,7 @@ function db:new(t)
     return t
 end
 
-function database.openDatabase(filepath, config_path)
+function database.openDatabase(filepath, config_path, mission_table_path)
     local instance = db:new()
     local db = {}
 
@@ -83,8 +83,18 @@ function database.openDatabase(filepath, config_path)
     instance.activeAircraft = {}
     instance.lastLanded = {}
     f:close()
+    local f = io.open(mission_table_path, "r")
+    instance.miz = net.json2lua(f:read("*all"))
+    f:close()
+    instance.mission_table_path = mission_table_path
     instance.continue = true
     return instance
+end
+
+function db:reloadMizTable()
+    local f = io.open(self.mission_table_path, "r")
+    self.miz = net.json2lua(f:read("*all"))
+    f:close()
 end
 
 function db:checkLanded(coaAircraft)
@@ -389,7 +399,7 @@ function db:saveGroup(g)
     table.insert(self.db.units[group.coa], group)
 end
 
-function db:loadGroup(group)
+function db:loadGroup(group, mizGroup)
     coalition.addGroup(group.country, group.category, group)
 end
 
@@ -407,8 +417,26 @@ end
 
 function db:loadAllGroups()
     self:read()
+    self:reloadMizTable()
     for i = 1, 2 do
         for groupName, group in next, self.db.units[i] do
+            for coaName, coaTable in next, self.miz.mission.coalition do
+                for _, countryTable in next, coaTable.country do
+                    for _, groupTable in next, countryTable.vehicle.group do
+                        if groupTable.name == groupName then
+                            for _, unit in next, group.units do
+                                for _, unitTable in next, groupTable.units do
+                                    if unitTable.name == unit.name then
+                                        if unitTable.playerCanDrive == true then
+                                            unit.playerCanDrive = true
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
             self:loadGroup(group)
         end
     end
@@ -507,7 +535,6 @@ end
 
 function db:startUpdateLoop(start_time)
     local function update(self, time)
-        
         if trigger.misc.getUserFlag(self.config.next_mission_flag) == 1 then
             self:reset()
         end
