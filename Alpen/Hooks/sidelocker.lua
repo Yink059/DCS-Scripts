@@ -2,6 +2,7 @@ local db, database = dofile(lfs.writedir() .. "Alpen/db.lua")
 local pw = "floggerz"
 local test_filepath = lfs.writedir() .. "Alpen/db.json"
 local config_filepath = lfs.writedir() .. "Alpen/config.json"
+local mission_table_path = lfs.writedir() .. "Alpen/mission.json"
 local hooks_db = database.openDatabase(test_filepath, config_filepath)
 local sideswitch = {}
 
@@ -33,7 +34,7 @@ local function getUcid(pid)
 end
 
 function sideswitch.onMissionLoadEnd()
-    hooks_db = database.openDatabase(test_filepath, config_filepath)
+    hooks_db = database.openDatabase(test_filepath, config_filepath, mission_table_path)
     hooks_db:startUpdateHooks()
 end
 
