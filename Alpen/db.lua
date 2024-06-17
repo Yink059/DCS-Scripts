@@ -419,21 +419,23 @@ function db:loadAllGroups()
     self:read()
     self:reloadMizTable()
     for i = 1, 2 do
-        for groupName, group in next, self.db.units[i] do
+        for _, group in next, self.db.units[i] do
             for coaName, coaTable in next, self.miz.mission.coalition do
-                for _, countryTable in next, coaTable.country do
+                for c, countryTable in next, coaTable.country do
                     if countryTable.vehicle ~= nil then
-                        for _, groupTable in next, countryTable.vehicle.group do
-                            if groupTable.name == groupName then
+                        for g, groupTable in next, countryTable.vehicle.group do
+                            if groupTable.name == group.name then
                                 for _, unit in next, group.units do
                                     for _, unitTable in next, groupTable.units do
                                         if unitTable.name == unit.name then
                                             if unitTable.playerCanDrive == true then
+                                                log.write("playerCanDrive",log.INFO, unitTable.name)
                                                 unit.playerCanDrive = true
                                             end
                                         end
                                     end
                                 end
+                                break
                             end
                         end
                     end
