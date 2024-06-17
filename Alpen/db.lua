@@ -383,6 +383,7 @@ function db:saveGroup(g)
     group.units = {}
     group.category = g:getCategory()
     group.lateActivation = true
+    local isEWR = false
     for i, unit in next, g:getUnits() do
         group.units[i] = {}
         group.units[i].name = unit:getName()
@@ -394,9 +395,17 @@ function db:saveGroup(g)
         if unit:isActive() then
             group.lateActivation = false
         end
-    end
+        
+        for k,v in next, self.config.EWR do
+            if group.units[i].type == v then
+                isEWR = true
+            end
+        end
 
-    table.insert(self.db.units[group.coa], group)
+    end
+    if not isEWR then
+        table.insert(self.db.units[group.coa], group)
+    end
 end
 
 function db:loadGroup(group, mizGroup)
