@@ -43,7 +43,7 @@ local function getUcid(pid)
     return net.get_player_info(pid, 'ucid')
 end
 
-function lives.onMissionLoadBegin()
+function lives.onMissionLoadEnd()
     lives_db = database.openDatabase(test_filepath, config_filepath, mission_table_path)
 end
 
