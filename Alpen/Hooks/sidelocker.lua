@@ -3,7 +3,6 @@ local pw = "floggerz"
 local test_filepath = lfs.writedir() .. "Alpen/db.json"
 local config_filepath = lfs.writedir() .. "Alpen/config.json"
 local mission_table_path = lfs.writedir() .. "Alpen/mission.json"
-local hooks_db = database.openDatabase(test_filepath, config_filepath)
 local sideswitch = {}
 
 local gameMasters = {
