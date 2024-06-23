@@ -84,6 +84,7 @@ function database.openDatabase(filepath, config_path, mission_table_path)
     instance.lastLanded = {}
     f:close()
     local f = io.open(mission_table_path, "r")
+    log.write("Mission DB", log.INFO, mission_table_path)
     instance.miz = net.json2lua(f:read("*all"))
     f:close()
     instance.mission_table_path = mission_table_path

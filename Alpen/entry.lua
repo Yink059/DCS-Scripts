@@ -10,7 +10,6 @@ if unit_db:getInit() ~= true then
     for i = 1, 2 do
         local groups = coalition.getGroups(i , Group.Category.GROUND)
         for _,g in next, groups do
-            log.write("Init Destroy", log.INFO, "destroying: " .. tostring(g:getName()))
             local delete = true
 
             for _, unit in next, g:getUnits() do
@@ -20,8 +19,10 @@ if unit_db:getInit() ~= true then
                     end
                 end
             end
-
-            if delete then g:destroy() end
+            if delete then  
+                log.write("Init Destroy", log.INFO, "destroying: " .. tostring(g:getName()))
+                g:destroy()
+            end
         end
     end
     unit_db:loadAllGroups()
