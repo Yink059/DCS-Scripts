@@ -553,7 +553,6 @@ function camera:captureUnits(unit, infra)
 	--outText(5,vec3ToPitch(matrixVec3))	
 	--outText(5,vec3ToYaw(matrixVec3))
 	
-	local foundUnits = {}
 	local volP = {
 		id = world.VolumeType.PYRAMID,
 		params = {
@@ -566,7 +565,7 @@ function camera:captureUnits(unit, infra)
 		}
 	}
 	
-	local foundUnits, distance = {}, 0
+	local foundUnits = {}
 	local ifFound = function(foundItem, val)
 		local distanceCalc = distance(foundItem, unit)
 		foundUnits[foundItem:getName()] = {unit = foundItem, distance = distanceCalc}
